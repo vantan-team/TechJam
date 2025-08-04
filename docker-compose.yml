@@ -1,0 +1,8 @@
+services:
+  api:
+    build: ./back/
+    volumes:
+      - ./back:/back
+    ports:
+     - 8008:8000
+      
