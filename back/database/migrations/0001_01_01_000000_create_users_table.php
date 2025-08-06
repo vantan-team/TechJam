@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('password');
             $table->string('profile_photo_url')->nullable();
             $table->text('introduction')->nullable();
-            $table->boolean('private')->default(false);
+            $table->boolean('private')->default(true);
             $table->rememberToken();
             $table->timestamps();
         });
