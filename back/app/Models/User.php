@@ -6,11 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +22,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'profile_photo_url',
+        'introduction',
+        'private',
     ];
 
     /**
@@ -43,6 +47,37 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'private' => 'boolean',
         ];
+    }
+
+    public function followers()
+    {
+        return $this->hasMany(Follower::class, 'followed_user_id');
+    }
+
+    public function following()
+    {
+        return $this->hasMany(Follower::class, 'follower_user_id');
+    }
+
+    public function friendRequestsSent()
+    {
+        return $this->hasMany(Friend::class, 'user_id');
+    }
+
+    public function friendRequestsReceived()
+    {
+        return $this->hasMany(Friend::class, 'friend_user_id');
+    }
+
+    public function visitedShops()
+    {
+        return $this->hasMany(VisitedShop::class);
+    }
+
+    public function guideBooks()
+    {
+        return $this->hasMany(GuideBook::class);
     }
 }

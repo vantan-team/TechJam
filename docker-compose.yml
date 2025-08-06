@@ -1,8 +1,23 @@
 services:
-  api:
+  back:
     build: ./back/
     volumes:
       - ./back:/back
     ports:
-     - 8008:8000
+      - 8008:8000
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: my_michelin
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
       
