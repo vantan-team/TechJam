@@ -9,13 +9,14 @@ import { useRouter } from 'next/navigation';
 
 export const HomeNav = () => {
     const [user, setUser] = useAtom(userAtom);
+    const router = useRouter();
+    
     useEffect(() => {
     async function checkAuth() {
        const user =  await getUserAuthStatus();
        if (user?.isLoggedIn){
           setUser(user.user);
        }else {
-        const router = useRouter();
         if (window.location.pathname !== '/') {
             router.push('/');
         } else if (window.location.pathname === '/') {
@@ -24,10 +25,10 @@ export const HomeNav = () => {
        }
     }
     checkAuth();
-   }, []);
+   }, [router, setUser]);
    
   return (
-    <nav className="fixed bottom-0 left-0 w-full bg-white border-t shadow-md z-50">
+    <nav className="fixed bottom-0 left-0 w-full bg-white z-50">
       <div className="flex justify-around items-center h-16">
         <House className="w-6 h-6" />
         <Users className="w-6 h-6" />

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -119,4 +120,23 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Leaflet地図のフルスクリーン表示設定 */
+.leaflet-container {
+  height: 100vh !important;
+  width: 100vw !important;
+  z-index: 1;
+}
+
+/* Leafletコントロールの調整 */
+.leaflet-control-container {
+  position: relative;
+  z-index: 2;
+}
+
+/* マーカークラスタリングとポップアップの調整 */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
