@@ -11,6 +11,7 @@ class GuideBook extends Model
         'title',
         'geo',
         'genre',
+        'image_url',
     ];
 
     public function user()

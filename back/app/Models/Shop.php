@@ -11,6 +11,7 @@ class Shop extends Model
         'shop_name',
         'address',
         'category',
+        'image_url',
     ];
 
     public function visitedShops()

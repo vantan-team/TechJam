@@ -14,11 +14,12 @@ return new class extends Migration
         Schema::create('shops', function (Blueprint $table) {
             $table->id();
             $table->string('hotpepper_id')->nullable()->unique();
+            $table->string('image_url')->nullable();
             $table->string('shop_name');
             $table->string('address');
             $table->string('category')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['shop_name', 'address']);
         });
     }
