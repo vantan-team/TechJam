@@ -5,9 +5,19 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FriendController;
 use App\Http\Controllers\FollowController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\RestaurantController;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+
+// Home endpoints
+Route::get('/home', [HomeController::class, 'index']);
+
+// Restaurant endpoints
+Route::get('/restaurants/{hotpepperId}/detail', [RestaurantController::class, 'getShopDetail']);
+Route::post('/restaurants/search', [RestaurantController::class, 'search']);
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -22,6 +32,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // User endpoints (authenticated)
     Route::post('/user/follow', [FollowController::class, 'follow']);
     Route::post('/user/{id}/followed', [FollowController::class, 'getFollowed']);
+
+    // Restaurant endpoints (authenticated)
+    Route::post('/restaurants/add-to-guide', [RestaurantController::class, 'addToGuide']);
 
 });
 
