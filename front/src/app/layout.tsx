@@ -32,7 +32,6 @@ export default function RootLayout({
       >
         <Provider>
           {children}
-          <HomeNav />
         </Provider>
       </body>
     </html>
