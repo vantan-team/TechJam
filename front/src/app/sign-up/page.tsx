@@ -119,8 +119,9 @@ export default function SignUpPage() {
       const submitData = new FormData();
       submitData.append('email', formData.email);
       submitData.append('password', formData.password);
+      submitData.append('password_confirmation', formData.confirmPassword);
       submitData.append('username', formData.username);
-      submitData.append('bio', formData.bio);
+      submitData.append('introduction', formData.bio);
       
       if (formData.profileImage) {
         submitData.append('profileImage', formData.profileImage);
@@ -132,7 +133,7 @@ export default function SignUpPage() {
         bio: formData.bio,
         hasProfileImage: !!formData.profileImage
       });
-      const req = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/auth/signup`, {
+      const req = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/auth/register`, {
         method: 'POST',
         body: submitData
       });
