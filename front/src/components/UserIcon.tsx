@@ -1,17 +1,19 @@
 "use client";
 
-import React from 'react'
-import { useAtom } from 'jotai';
-import { userAtom } from '@/atoms/user';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export const UserIcon = () => {
-  const [ user,] = useAtom(userAtom);
+export const UserIcon = ({
+  icon,
+}: {
+  icon?: string;
+  childeren?: React.ReactNode;
+}) => {
   return (
     // <img src={user?.profilePhotoUrl} alt="ユーザーのプロフィール写真" />
     <Avatar>
-      <AvatarImage src="https://github.com/shadcn.png" />
+      <AvatarImage src={icon} />
       <AvatarFallback>US</AvatarFallback>
     </Avatar>
-  )
-}
+  );
+};
