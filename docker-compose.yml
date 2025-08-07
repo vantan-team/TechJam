@@ -3,6 +3,7 @@ services:
     build: ./back/
     volumes:
       - ./back:/back
+      - /back/vendor  # anonymous volumeでvendorディレクトリを保護
     ports:
       - 8008:8000
     depends_on:
