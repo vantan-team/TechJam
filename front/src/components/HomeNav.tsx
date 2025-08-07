@@ -13,15 +13,19 @@ export const HomeNav = () => {
     
     useEffect(() => {
     async function checkAuth() {
-       const user =  await getUserAuthStatus();
-       if (user?.isLoggedIn){
-          setUser(user.user);
-       }else {
-        if (window.location.pathname !== '/') {
-            router.push('/');
-        } else if (window.location.pathname === '/') {
-            router.push('/home');
+       try {
+        const userStatus = await getUserAuthStatus();
+        if (userStatus?.isLoggedIn){
+           setUser(userStatus.user);
+        } else {
+           // 認証されていない場合、ホーム系ページからログインページにリダイレクト
+           if (window.location.pathname.startsWith('/home') || window.location.pathname.startsWith('/user')) {
+               router.push('/login');
+           }
         }
+       } catch (error) {
+           console.error('認証チェックエラー:', error);
+           router.push('/login');
        }
     }
     checkAuth();
