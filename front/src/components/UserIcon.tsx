@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export const UserIcon = ({
   icon,
 }: {
-  icon: string;
+  icon?: string;
   childeren?: React.ReactNode;
 }) => {
   return (
