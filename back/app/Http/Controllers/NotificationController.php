@@ -15,8 +15,19 @@ class NotificationController extends Controller
      */
     public function index(): JsonResponse
     {
-        $user = Auth::user();
-        $notifications = collect();
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => ['認証が必要です']
+                ], 401);
+            }
+
+            $notifications = collect();
+
+            // デバッグログ
+            \Log::info('Getting notifications for user', ['user_id' => $user->id]);
 
         // 1. フレンドリクエスト通知（受信したpending状態）
         $friendRequests = Friend::where('friend_user_id', $user->id)
@@ -44,19 +55,36 @@ class NotificationController extends Controller
                 ];
             });
 
-        // 2. フレンド承認通知（自分が送ったリクエストが承認された）
-        $acceptedFriends = Friend::where('user_id', $user->id)
+        // 2. フレンド承認通知（自分が送ったリクエストが承認された場合のみ）
+        // 申請者（自分）が承認通知を受け取るケース：自分が送信したリクエストが相手に承認された
+        $acceptedFriendsQuery = Friend::where('user_id', $user->id)
             ->where('status', 'accepted')
             ->where('accepted_at', '>=', Carbon::now()->subDays(7)) // 1週間以内
+            ->whereNotNull('accepted_at') // 確実にaccepted_atが存在する
             ->with('friend:id,name,profile_photo_url')
-            ->orderBy('accepted_at', 'desc')
-            ->get()
+            ->orderBy('accepted_at', 'desc');
+
+        // デバッグログ
+        \Log::info('Accepted friends query', [
+            'user_id' => $user->id,
+            'count' => $acceptedFriendsQuery->count(),
+            'sql' => $acceptedFriendsQuery->toSql(),
+            'bindings' => $acceptedFriendsQuery->getBindings()
+        ]);
+
+        $acceptedFriends = $acceptedFriendsQuery->get()
             ->map(function ($friendship) {
+                \Log::info('Processing accepted friend', [
+                    'friendship_id' => $friendship->id,
+                    'friend_name' => $friendship->friend->name ?? 'N/A',
+                    'accepted_at' => $friendship->accepted_at
+                ]);
+                
                 return [
                     'id' => 'friend_accepted_' . $friendship->id,
                     'type' => 'friend_accepted',
                     'title' => 'フレンドリクエスト承認',
-                    'message' => $friendship->friend->name . 'さんがフレンドリクエストを承認しました',
+                    'message' => $friendship->friend->name . 'さんがあなたのフレンドリクエストを承認しました！',
                     'user' => [
                         'id' => $friendship->friend->id,
                         'name' => $friendship->friend->name,
@@ -107,13 +135,21 @@ class NotificationController extends Controller
                       $acceptedFriends->count() + 
                       $newFollowers->count();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'notifications' => $notifications,
-                'unread_count' => $unreadCount
-            ]
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'notifications' => $notifications,
+                    'unread_count' => $unreadCount
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Notification index error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => ['通知の取得に失敗しました'],
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -121,17 +157,25 @@ class NotificationController extends Controller
      */
     public function unreadCount(): JsonResponse
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => ['認証が必要です']
+                ], 401);
+            }
 
         // フレンドリクエスト数
         $friendRequestCount = Friend::where('friend_user_id', $user->id)
             ->where('status', 'pending')
             ->count();
 
-        // 最近承認されたフレンド数（1週間以内）
+        // 最近承認されたフレンド数（1週間以内） - 自分が送信したリクエストが承認されたもののみ
         $recentAcceptedCount = Friend::where('user_id', $user->id)
             ->where('status', 'accepted')
             ->where('accepted_at', '>=', Carbon::now()->subDays(7))
+            ->whereNotNull('accepted_at')
             ->count();
 
         // 新しいフォロワー数（1週間以内）
@@ -141,15 +185,22 @@ class NotificationController extends Controller
 
         $totalUnread = $friendRequestCount + $recentAcceptedCount + $newFollowerCount;
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'unread_count' => $totalUnread,
-                'friend_requests' => $friendRequestCount,
-                'friend_accepted' => $recentAcceptedCount,
-                'new_followers' => $newFollowerCount
-            ]
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'unread_count' => $totalUnread,
+                    'friend_requests' => $friendRequestCount,
+                    'friend_accepted' => $recentAcceptedCount,
+                    'new_followers' => $newFollowerCount
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Notification unread count error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => ['未読数の取得に失敗しました']
+            ], 500);
+        }
     }
 
     /**
@@ -157,12 +208,20 @@ class NotificationController extends Controller
      */
     public function markAsRead(): JsonResponse
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => ['認証が必要です']
+                ], 401);
+            }
 
         // 承認されたフレンドの通知を古い日付にマーク（実質的に非表示）
         Friend::where('user_id', $user->id)
             ->where('status', 'accepted')
             ->where('accepted_at', '>=', Carbon::now()->subDays(7))
+            ->whereNotNull('accepted_at')
             ->update(['accepted_at' => Carbon::now()->subDays(8)]);
 
         // 新しいフォロワーの通知を古い日付にマーク
@@ -170,9 +229,16 @@ class NotificationController extends Controller
             ->where('created_at', '>=', Carbon::now()->subDays(7))
             ->update(['created_at' => Carbon::now()->subDays(8)]);
 
-        return response()->json([
-            'success' => true,
-            'message' => ['通知を既読にマークしました']
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => ['通知を既読にマークしました']
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Mark notifications as read error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => ['通知の既読マークに失敗しました']
+            ], 500);
+        }
     }
 }

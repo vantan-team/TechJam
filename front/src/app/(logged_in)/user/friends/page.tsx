@@ -11,8 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { UserAvater } from "@/components/UserAvater";
-import { Search, Users, ChevronLeft, UserPlus, Bell } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Search, Users, UserPlus } from "lucide-react";
 import {
   getFriends,
   searchUsers,
@@ -20,8 +19,7 @@ import {
   type User,
 } from "@/requests/user";
 
-const friendList = () => {
-  const router = useRouter();
+const FriendList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [friends, setFriends] = useState<User[]>([]);
@@ -151,13 +149,34 @@ const friendList = () => {
                           key={user.id}
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                         >
-                          <div className="flex-grow">
-                            <p className="text-sm font-medium text-gray-900">
-                              {user.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {user.email}
-                            </p>
+                          <div className="flex items-center flex-grow">
+                            <div className="flex-shrink-0 mr-3">
+                              {user.profile_photo_url ? (
+                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                                  <img 
+                                    src={`${process.env.NEXT_PUBLIC_API_ROOT}${user.profile_photo_url}`}
+                                    alt={user.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove('hidden');
+                                    }}
+                                  />
+                                  <div className="hidden w-full h-full bg-gradient-to-br from-[#A90017] to-[#940014] items-center justify-center text-white font-semibold text-sm">
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#A90017] to-[#940014] flex items-center justify-center text-white font-semibold text-sm">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {user.name}
+                              </p>
+                            </div>
                           </div>
                           <Button
                             size="sm"
@@ -271,4 +290,4 @@ const friendList = () => {
   );
 };
 
-export default friendList;
+export default FriendList;

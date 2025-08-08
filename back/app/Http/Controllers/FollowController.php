@@ -104,28 +104,152 @@ class FollowController extends Controller
     }
 
     /**
-     * 指定ユーザーのフォローリスト取得
+     * 指定ユーザーのフォロワーリスト取得
      */
-    public function getFollowed($id): JsonResponse
+    public function getFollowers($id): JsonResponse
     {
         $currentUserId = Auth::id();
+        $currentUser = Auth::user();
+
+        \Log::info('getFollowers called', [
+            'target_user_id' => $id,
+            'current_user_id' => $currentUserId,
+            'current_user' => $currentUser ? $currentUser->id : 'null'
+        ]);
 
         // 指定されたユーザーが存在するかチェック
         $targetUser = User::find($id);
         if (!$targetUser) {
+            \Log::warning('Target user not found', ['user_id' => $id]);
             return response()->json([
                 'success' => false,
                 'message' => 'The session did not exist in this universe.'
             ], 404);
         }
 
+        \Log::info('Target user found', [
+            'target_user_id' => $targetUser->id,
+            'target_user_private' => $targetUser->private ?? false
+        ]);
+
         // プライバシーチェック: 非公開ユーザーで関係性がない場合
-        $currentUser = Auth::user();
-        if ($targetUser->private && (!$currentUser || !$this->areConnected($currentUser, $targetUser))) {
+        // privateがnullの場合は公開として扱う
+        $isPrivate = $targetUser->private ?? false;
+        
+        // 認証されていない場合は、非公開ユーザーはアクセス不可
+        if (!$currentUser) {
+            if ($isPrivate) {
+                \Log::info('Access denied: unauthenticated user accessing private profile', [
+                    'target_user_id' => $id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'このユーザーのプロフィールは非公開です'
+                ], 403);
+            }
+        } else {
+            // 認証されているが、非公開ユーザーで関係性がない場合
+            if ($isPrivate && !$this->areConnected($currentUser, $targetUser)) {
+                \Log::info('Access denied due to privacy settings', [
+                    'target_user_id' => $id,
+                    'current_user_id' => $currentUserId
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'このユーザーのプロフィールは非公開です'
+                ], 403);
+            }
+        }
+
+        try {
+            $followerUsers = User::whereIn('id', function($query) use ($id) {
+                $query->select('follower_user_id')
+                      ->from('followers')
+                      ->where('followed_user_id', $id);
+            })
+            ->get()
+            ->map(function($user) use ($currentUserId) {
+                return [
+                    'id' => (string) $user->id,
+                    'name' => $user->name,
+                    'introduction' => $user->introduction ?? '',
+                    'profilePhotoUrl' => $user->profile_photo_url ?? '',
+                    'follow' => $user->following()->count(),
+                    'follower' => $user->followers()->count(),
+                    'is_friend' => $this->checkIfFriend($currentUserId, $user->id)
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => '',
+                'followers' => $followerUsers
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'このユーザーのプロフィールは非公開です'
-            ], 403);
+                'message' => 'The session did not exist in this universe.'
+            ], 500);
+        }
+    }
+
+    /**
+     * 指定ユーザーのフォローリスト取得
+     */
+    public function getFollowed($id): JsonResponse
+    {
+        $currentUserId = Auth::id();
+        $currentUser = Auth::user();
+
+        \Log::info('getFollowed called', [
+            'target_user_id' => $id,
+            'current_user_id' => $currentUserId,
+            'current_user' => $currentUser ? $currentUser->id : 'null'
+        ]);
+
+        // 指定されたユーザーが存在するかチェック
+        $targetUser = User::find($id);
+        if (!$targetUser) {
+            \Log::warning('Target user not found', ['user_id' => $id]);
+            return response()->json([
+                'success' => false,
+                'message' => 'The session did not exist in this universe.'
+            ], 404);
+        }
+
+        \Log::info('Target user found', [
+            'target_user_id' => $targetUser->id,
+            'target_user_private' => $targetUser->private ?? false
+        ]);
+
+        // プライバシーチェック: 非公開ユーザーで関係性がない場合
+        // privateがnullの場合は公開として扱う
+        $isPrivate = $targetUser->private ?? false;
+        
+        // 認証されていない場合は、非公開ユーザーはアクセス不可
+        if (!$currentUser) {
+            if ($isPrivate) {
+                \Log::info('Access denied: unauthenticated user accessing private profile', [
+                    'target_user_id' => $id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'このユーザーのプロフィールは非公開です'
+                ], 403);
+            }
+        } else {
+            // 認証されているが、非公開ユーザーで関係性がない場合
+            if ($isPrivate && !$this->areConnected($currentUser, $targetUser)) {
+                \Log::info('Access denied due to privacy settings', [
+                    'target_user_id' => $id,
+                    'current_user_id' => $currentUserId
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'このユーザーのプロフィールは非公開です'
+                ], 403);
+            }
         }
 
         try {
@@ -164,27 +288,40 @@ class FollowController extends Controller
     /**
      * ユーザー間の関係性をチェック（フレンドまたはフォロー関係）
      */
-    private function areConnected(User $currentUser, User $targetUser): bool
+    private function areConnected(?User $currentUser, User $targetUser): bool
     {
-        // フレンド関係をチェック
-        $isFriend = Friend::where(function ($query) use ($currentUser, $targetUser) {
-            $query->where('user_id', $currentUser->id)
-                  ->where('friend_user_id', $targetUser->id);
-        })->orWhere(function ($query) use ($currentUser, $targetUser) {
-            $query->where('user_id', $targetUser->id)
-                  ->where('friend_user_id', $currentUser->id);
-        })->where('status', 'accepted')->exists();
+        if (!$currentUser) {
+            return false;
+        }
 
-        // フォロー関係もチェック
-        $isFollowing = Follower::where(function ($query) use ($currentUser, $targetUser) {
-            $query->where('follower_user_id', $currentUser->id)
-                  ->where('followed_user_id', $targetUser->id);
-        })->orWhere(function ($query) use ($currentUser, $targetUser) {
-            $query->where('follower_user_id', $targetUser->id)
-                  ->where('followed_user_id', $currentUser->id);
-        })->exists();
+        try {
+            // フレンド関係をチェック
+            $isFriend = Friend::where(function ($query) use ($currentUser, $targetUser) {
+                $query->where('user_id', $currentUser->id)
+                      ->where('friend_user_id', $targetUser->id);
+            })->orWhere(function ($query) use ($currentUser, $targetUser) {
+                $query->where('user_id', $targetUser->id)
+                      ->where('friend_user_id', $currentUser->id);
+            })->where('status', 'accepted')->exists();
 
-        return $isFriend || $isFollowing;
+            // フォロー関係もチェック
+            $isFollowing = Follower::where(function ($query) use ($currentUser, $targetUser) {
+                $query->where('follower_user_id', $currentUser->id)
+                      ->where('followed_user_id', $targetUser->id);
+            })->orWhere(function ($query) use ($currentUser, $targetUser) {
+                $query->where('follower_user_id', $targetUser->id)
+                      ->where('followed_user_id', $currentUser->id);
+            })->exists();
+
+            return $isFriend || $isFollowing;
+        } catch (\Exception $e) {
+            \Log::error('Error checking user connection', [
+                'current_user_id' => $currentUser->id,
+                'target_user_id' => $targetUser->id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 
     /**

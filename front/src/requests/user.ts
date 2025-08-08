@@ -27,7 +27,7 @@ export interface SearchUsersResponse {
   message: string[];
 }
 
-// feature/notification の型（スペル修正：notifycation → notification）
+// feature/notification の型
 export interface Notification {
   id: string;
   type: "friend_request" | "friend_accepted" | "new_follower";
@@ -223,7 +223,6 @@ export async function getNotifications(): Promise<NotificationsResponse | null> 
   });
 }
 
-// ユーザーのフォロー状態を取得
 export interface UserFollowStatusResponse {
   success: boolean;
   is_following: boolean;
@@ -253,9 +252,56 @@ export async function markNotificationsAsRead(): Promise<any> {
   });
 }
 
-/**
- * プロフィール更新API
- */
+// ====== フォロー関連 ======
+export interface FollowUser {
+  id: string;
+  name: string;
+  introduction: string;
+  profilePhotoUrl: string;
+  follow: number;
+  follower: number;
+  is_friend: boolean;
+}
+
+export interface FollowersResponse {
+  success: boolean;
+  message: string | string[];
+  followers: FollowUser[];
+}
+
+export interface FollowedResponse {
+  success: boolean;
+  message: string | string[];
+  followed: FollowUser[];
+}
+
+export async function getFollowers(userId: string): Promise<FollowersResponse | null> {
+  return await fetch.post<null, FollowersResponse | null>(
+    `/api/user/${userId}/followers`,
+    null,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+export async function getFollowed(userId: string): Promise<FollowedResponse | null> {
+  return await fetch.post<null, FollowedResponse | null>(
+    `/api/user/${userId}/followed`,
+    null,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+// ====== プロフィール更新 ======
 export interface UpdateUserProfileRequest {
   name: string;
   bio: string;
