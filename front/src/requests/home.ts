@@ -110,3 +110,15 @@ export class LocationError extends Error {
     this.name = "LocationError";
   }
 }
+
+/**
+ * ホットペッパーIDで店舗詳細を取得
+ * @param hotpepperId ホットペッパー店舗ID
+ * @returns 店舗詳細データ (shop)
+ */
+export async function getRestaurantDetail(hotpepperId: string) {
+  const res = await fetch.get<{ success: boolean; data: { shop: any } }>(
+    `/api/restaurants/${hotpepperId}/detail`
+  );
+  return res.data.shop;
+}

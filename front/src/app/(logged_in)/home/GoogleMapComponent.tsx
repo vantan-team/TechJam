@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { ExternalLink, MoveUpRight } from 'lucide-react';
 
 // Leafletのアイコンの問題を修正
 const setupLeafletIcons = () => {
@@ -47,9 +48,9 @@ function FitBoundsToMarkers({ markers, selectedMarkerId, initialFit = false }: {
       const selectedMarker = markers.find(marker => marker.id === selectedMarkerId);
       if (selectedMarker) {
         // より控えめなアニメーションでマーカーを表示
-        map.setView(selectedMarker.position, Math.max(map.getZoom(), 15), { 
+        map.setView([selectedMarker.position[0]-0.005, selectedMarker.position[1]], Math.max(map.getZoom(), 15), { 
           animate: true,
-          duration: 0.3 // 短縮
+          duration: 0.3 
         });
       }
     }
@@ -89,7 +90,15 @@ function FitBoundsToMarkers({ markers, selectedMarkerId, initialFit = false }: {
 }
 
 // カスタムマーカーコンポーネント（選択されたマーカーのポップアップを自動で開く）
-function CustomMarker({ marker, isSelected }: { marker: MarkerData; isSelected: boolean }) {
+function CustomMarker({
+  marker,
+  isSelected,
+  onDetailClick,
+}: {
+  marker: MarkerData;
+  isSelected: boolean;
+  onDetailClick?: (marker: MarkerData) => void;
+}) {
   const markerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -113,19 +122,38 @@ function CustomMarker({ marker, isSelected }: { marker: MarkerData; isSelected: 
           {marker.title && <strong>{marker.title}</strong>}
           {marker.title && <br />}
           <span dangerouslySetInnerHTML={{ __html: marker.popup }} />
+          <br />
+            <button
+            style={{
+              marginTop: 8,
+              background: 'none',
+              color: '#A90017',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+            onClick={() => onDetailClick && onDetailClick(marker)}
+            >
+              <div className='flex items-center'>
+                店舗の詳細
+                <ExternalLink size='15'></ExternalLink>
+              </div>
+            </button>
         </Popup>
       )}
     </Marker>
   );
 }
 
-export default function SimpleMap({ 
+export default function SimpleMap({
   center = [35.1698, 136.8913], // 名古屋中心部（栄・名駅の中間）
   zoom = 12,
   markers = [],
   selectedMarkerId = null,
-  showOnlySelected = false
-}: MapProps) {
+  showOnlySelected = false,
+  onDetailClick,
+}: MapProps & { onDetailClick?: (marker: MarkerData) => void }) {
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,16 +162,17 @@ export default function SimpleMap({
   }, []);
 
   // 表示するマーカーをフィルタリング
-  const displayMarkers = showOnlySelected && selectedMarkerId !== null
-    ? markers.filter(marker => marker.id === selectedMarkerId)
-    : markers;
+  const displayMarkers =
+    showOnlySelected && selectedMarkerId !== null
+      ? markers.filter((marker) => marker.id === selectedMarkerId)
+      : markers;
 
   return (
-    <div ref={mapRef} style={{ height: '100vh', width: '100%' }}>
+    <div ref={mapRef} style={{ height: "100vh", width: "100%" }}>
       <MapContainer
         center={center}
         zoom={zoom}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: "100%", width: "100%" }}
         zoomControl={true}
         scrollWheelZoom={true}
         doubleClickZoom={true}
@@ -154,21 +183,22 @@ export default function SimpleMap({
         attributionControl={true}
       >
         <TileLayer
-          attribution='&copy; Google Maps'
+          attribution="&copy; Google Maps"
           url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&lang=ja"
           maxZoom={20}
         />
         {/* propsから渡されたマーカー */}
         {displayMarkers.map((marker, index) => (
-          <CustomMarker 
-            key={`${marker.id}-${index}`} 
-            marker={marker} 
+          <CustomMarker
+            key={`${marker.id}-${index}`}
+            marker={marker}
             isSelected={marker.id === selectedMarkerId}
+            onDetailClick={onDetailClick}
           />
         ))}
         {/* マーカーに合わせてマップの表示範囲を調整 */}
-        <FitBoundsToMarkers 
-          markers={displayMarkers} 
+        <FitBoundsToMarkers
+          markers={displayMarkers}
           selectedMarkerId={selectedMarkerId}
           initialFit={displayMarkers.length > 0}
         />
