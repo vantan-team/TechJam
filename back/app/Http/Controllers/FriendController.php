@@ -25,6 +25,7 @@ class FriendController extends Controller
             ->map(function ($friendship) {
                 return [
                     'id' => $friendship->friend->id,
+                    'friendship_id' => $friendship->id,
                     'name' => $friendship->friend->name,
                     'email' => $friendship->friend->email,
                     'profile_photo_url' => $friendship->friend->profile_photo_url,
@@ -40,6 +41,7 @@ class FriendController extends Controller
             ->map(function ($friendship) {
                 return [
                     'id' => $friendship->user->id,
+                    'friendship_id' => $friendship->id,
                     'name' => $friendship->user->name,
                     'email' => $friendship->user->email,
                     'profile_photo_url' => $friendship->user->profile_photo_url,
@@ -48,7 +50,7 @@ class FriendController extends Controller
             });
 
         // 両方向のフレンドをマージ
-        $friends = $sentFriends->merge($receivedFriends);
+        $friends = collect($sentFriends->toArray())->merge($receivedFriends->toArray());
 
         return response()->json([
             'success' => true,
