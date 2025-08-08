@@ -28,6 +28,7 @@ return [
         'https://localhost:8008',
         'https://127.0.0.1:3000',
         'https://127.0.0.1:8008',
+        '*'
     ],
 
     'allowed_origins_patterns' => [],
