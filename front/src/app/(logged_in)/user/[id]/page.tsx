@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
 import { userAtom } from '@/atoms/user';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +15,7 @@ import Link from 'next/link';
 
 export default function UserPage() {
   const params = useParams();
+  const router = useRouter();
   const [currentUser, setUser] = useAtom(userAtom);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [friendStatus, setFriendStatus] = useState<"none" | "pending" | "accepted">("none");
@@ -327,14 +328,20 @@ export default function UserPage() {
                 {guideBooks.length > 0 ? (
                   <div className="space-y-3">
                     {guideBooks.map((book, index) => (
-                      <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <div 
+                        key={index} 
+                        className="flex items-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors duration-200"
+                        onClick={() => router.push(`/guidebook/${book.id}`)}
+                      >
                         <img
                           src={book.cover_image || "/icon-256x256.png"}
                           alt={book.title}
                           className="w-12 h-12 rounded-lg object-cover mr-3"
                         />
                         <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 text-sm">{book.title}</h3>
+                          <h3 className="font-medium text-gray-900 text-sm hover:text-[#A90017] transition-colors">
+                            {book.title}
+                          </h3>
                           <div className="flex items-center text-xs text-gray-600 mt-1">
                             <MapPin size={12} className="mr-1" />
                             <span>{book.geo}</span>
@@ -348,6 +355,11 @@ export default function UserPage() {
                           {book.memo && (
                             <div className="text-xs text-gray-500 mt-1">{book.memo}</div>
                           )}
+                        </div>
+                        <div className="text-[#A90017] opacity-60 hover:opacity-100 transition-opacity">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
                       </div>
                     ))}

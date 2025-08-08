@@ -24,6 +24,7 @@ class GuideContentController extends Controller
                     'id' => $content->id,
                     'star' => $content->star,
                     'comment' => $content->comment,
+                    'image_url' => $content->image_url,
                     'shop' => [
                         'id' => $content->shop->id,
                         'name' => $content->shop->shop_name,
@@ -91,9 +92,26 @@ class GuideContentController extends Controller
                 ], 409);
             }
 
+            $data = $request->validated();
+            
+            // 画像アップロード処理
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $uploadPath = public_path('uploads/contents');
+                
+                // アップロードディレクトリが存在しない場合は作成
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                
+                $file->move($uploadPath, $fileName);
+                $data['image_url'] = url('uploads/contents/' . $fileName);
+            }
+
             $content = GuideBookContent::create([
                 'guide_id' => $guidebook->id,
-                ...$request->validated()
+                ...$data
             ]);
 
             $content->load('shop:id,shop_name,address,category');
@@ -105,6 +123,7 @@ class GuideContentController extends Controller
                     'id' => $content->id,
                     'star' => $content->star,
                     'comment' => $content->comment,
+                    'image_url' => $content->image_url,
                     'shop' => [
                         'id' => $content->shop->id,
                         'name' => $content->shop->shop_name,
@@ -133,7 +152,24 @@ class GuideContentController extends Controller
                 ->where('id', $contentId)
                 ->firstOrFail();
 
-            $content->update($request->validated());
+            $data = $request->validated();
+            
+            // 画像アップロード処理
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $uploadPath = public_path('uploads/contents');
+                
+                // アップロードディレクトリが存在しない場合は作成
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                
+                $file->move($uploadPath, $fileName);
+                $data['image_url'] = url('uploads/contents/' . $fileName);
+            }
+
+            $content->update($data);
             $content->load('shop:id,shop_name,address,category');
 
             return response()->json([
@@ -143,6 +179,7 @@ class GuideContentController extends Controller
                     'id' => $content->id,
                     'star' => $content->star,
                     'comment' => $content->comment,
+                    'image_url' => $content->image_url,
                     'shop' => [
                         'id' => $content->shop->id,
                         'name' => $content->shop->shop_name,
