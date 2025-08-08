@@ -97,7 +97,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'profilePhotoUrl' => $user->profile_photo_url ?? ''
             ],
-            'token' => $token
+            'access_token' => $token
         ]);
     }
 
