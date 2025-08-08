@@ -18,27 +18,39 @@ class RestaurantController extends Controller
 {
     public function search(SearchRequest $request): JsonResponse
     {
-        $keyword = $request->validated()['keyword'];
-        $includeHistory = $request->validated()['include_history'] ?? true;
+        $validated = $request->validated();
+        $keyword = $validated['keyword'];
+        $includeHistory = $validated['include_history'] ?? true;
 
-        $results = [];
+        // HotPepper検索（ページング・位置情報・絞り込み対応）
+        $hotpepper = $this->getHotpepperShops($keyword, [
+            'lat' => $validated['lat'] ?? null,
+            'lng' => $validated['lng'] ?? null,
+            'range' => $validated['range'] ?? null,
+            'start' => $validated['start'] ?? 1,
+            'count' => $validated['count'] ?? 20,
+            'genre' => $validated['genre'] ?? null,
+            'budget' => $validated['budget'] ?? null,
+        ]);
 
-        // HotPepper検索
-        $hotpepperShops = $this->getHotpepperShops($keyword);
-        $results = array_merge($results, $hotpepperShops);
+        $shops = $hotpepper['shops'];
 
         // 履歴検索 (認証ユーザーのみ)
+        $historyShops = [];
         if ($includeHistory && Auth::check()) {
-            $historyShops = $this->getHistoryShops($keyword, Auth::id());
-            $results = array_merge($results, $historyShops);
+            $historyShops = $this->getHistoryShops($keyword, Auth::id(), (int)($validated['count'] ?? 5));
+            $shops = array_merge($historyShops, $shops);
         }
 
         return response()->json([
             'success' => true,
             'data' => [
-                'shops' => array_slice($results, 0, 10),
-                'has_hotpepper' => count($hotpepperShops) > 0,
-                'has_history' => $includeHistory && count($results) > count($hotpepperShops)
+                'shops' => $shops,
+                'has_hotpepper' => count($hotpepper['shops']) > 0,
+                'has_history' => $includeHistory && count($historyShops) > 0,
+                'pagination' => [
+                    'hotpepper' => $hotpepper['meta']
+                ]
             ]
         ]);
     }
@@ -46,9 +58,9 @@ class RestaurantController extends Controller
     public function addToGuide(AddToGuideRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        
+
         DB::beginTransaction();
-        
+
         try {
             // ガイドブックの権限チェック
             $guideBook = GuideBook::findOrFail($validated['guide_book_id']);
@@ -57,25 +69,56 @@ class RestaurantController extends Controller
             }
 
             // Shopテーブルにレコードを作成または取得
-            $shop = Shop::firstOrCreate([
-                'hotpepper_id' => $validated['hotpepper_id']
-            ], [
-                'shop_name' => $validated['shop_name'],
-                'address' => $validated['shop_address'],
-                'category' => '',
-                'image_url' => null
-            ]);
+            // hotpepper_id が存在する場合はそれでユニーク、無い場合は (shop_name, address) の複合で同一判定
+            if (!empty($validated['hotpepper_id'])) {
+                $shop = Shop::firstOrCreate(
+                    ['hotpepper_id' => $validated['hotpepper_id']],
+                    [
+                        'shop_name' => $validated['shop_name'],
+                        'address' => $validated['shop_address'],
+                        'category' => '',
+                        'image_url' => null
+                    ]
+                );
+            } else {
+                $shop = Shop::firstOrCreate(
+                    [
+                        'shop_name' => $validated['shop_name'],
+                        'address' => $validated['shop_address'],
+                    ],
+                    [
+                        'hotpepper_id' => null,
+                        'category' => '',
+                        'image_url' => null
+                    ]
+                );
+            }
 
             // 訪問日を作成
             $visitedAt = \Carbon\Carbon::create($validated['visited_year'], $validated['visited_month'], 1);
 
-            // VisitedShopテーブルに保存
-            $visitedShop = VisitedShop::create([
-                'user_id' => Auth::id(),
-                'shop_id' => $shop->id,
-                'visited_at' => $visitedAt,
-                'memo' => $validated['memo']
-            ]);
+            // 同じ店舗・同じ年月の訪問が既にある場合はそれを再利用（重複作成防止）
+            $existingVisit = VisitedShop::where('user_id', Auth::id())
+                ->where('shop_id', $shop->id)
+                ->whereDate('visited_at', $visitedAt->format('Y-m-d'))
+                ->first();
+
+            if ($existingVisit) {
+                $visitedShop = $existingVisit;
+                // 新しいメモが渡っていれば上書き（任意）
+                if (!empty($validated['memo'])) {
+                    $visitedShop->memo = $validated['memo'];
+                    $visitedShop->save();
+                }
+            } else {
+                // VisitedShopテーブルに保存
+                $visitedShop = VisitedShop::create([
+                    'user_id' => Auth::id(),
+                    'shop_id' => $shop->id,
+                    'visited_at' => $visitedAt,
+                    'memo' => $validated['memo'] ?? null,
+                ]);
+            }
 
             // 重複チェック
             $existingContent = GuideBookContent::where('guide_id', $guideBook->id)
@@ -90,13 +133,14 @@ class RestaurantController extends Controller
                 ], 409);
             }
 
-            // GuideBookContentテーブルに保存
+            // GuideBookContentテーブルに保存（メモはコンテンツのコメントにも反映）
             $guideBookContent = GuideBookContent::create([
                 'guide_id' => $guideBook->id,
                 'shop_id' => $shop->id,
                 'star' => $validated['rating'],
                 'visited_shop_id' => $visitedShop->id,
-                'image_url' => null
+                'image_url' => null,
+                'comment' => $validated['memo'] ?? null,
             ]);
 
             DB::commit();
@@ -121,48 +165,109 @@ class RestaurantController extends Controller
         }
     }
 
-    private function getHotpepperShops(string $keyword): array
+    private function getHotpepperShops(string $keyword, array $params = []): array
     {
         $apiKey = config('services.hotpepper.api_key');
         if (empty($apiKey)) {
-            return [];
+            return [
+                'shops' => [],
+                'meta' => [
+                    'total' => 0,
+                    'start' => (int)($params['start'] ?? 1),
+                    'count' => (int)($params['count'] ?? 20),
+                    'has_more' => false,
+                ],
+            ];
         }
 
         try {
-            $response = Http::timeout(5)->get('http://webservice.recruit.co.jp/hotpepper/gourmet/v1/', [
+            $query = [
                 'key' => $apiKey,
                 'keyword' => $keyword,
                 'format' => 'json',
-                'count' => 5
-            ]);
+                'count' => (int)($params['count'] ?? 20),
+                'start' => (int)($params['start'] ?? 1),
+            ];
+
+            // 位置情報検索
+            if (!empty($params['lat']) && !empty($params['lng']) && !empty($params['range'])) {
+                $query['lat'] = (float)$params['lat'];
+                $query['lng'] = (float)$params['lng'];
+                $query['range'] = (int)$params['range'];
+            }
+
+            // 絞り込み
+            if (!empty($params['genre'])) {
+                $query['genre'] = $params['genre'];
+            }
+            if (!empty($params['budget'])) {
+                $query['budget'] = $params['budget'];
+            }
+
+            $response = Http::timeout(8)->get('http://webservice.recruit.co.jp/hotpepper/gourmet/v1/', $query);
 
             if ($response->successful()) {
-                $shops = $response->json()['results']['shop'] ?? [];
-                return array_map(fn($shop) => [
-                    'id' => $shop['id'],
-                    'name' => $shop['name'],
-                    'address' => $shop['address'],
-                    'category' => $shop['genre']['name'] ?? '',
-                    'source' => 'hotpepper',
-                    'budget' => $shop['budget']['name'] ?? '',
-                    'photo_url' => $shop['photo']['mobile']['l'] ?? null
-                ], $shops);
+                $json = $response->json();
+                $shops = $json['results']['shop'] ?? [];
+                $total = (int)($json['results']['results_available'] ?? 0);
+                $returned = (int)($json['results']['results_returned'] ?? 0);
+                $start = (int)($json['results']['results_start'] ?? ($params['start'] ?? 1));
+                $count = (int)($params['count'] ?? $returned);
+
+                $items = array_map(function ($shop) {
+                    return [
+                        'id' => $shop['id'],
+                        'hotpepper_id' => $shop['id'], // フロントで詳細取得に使用
+                        'name' => $shop['name'],
+                        'address' => $shop['address'],
+                        'category' => $shop['genre']['name'] ?? '',
+                        'source' => 'hotpepper',
+                        'budget' => $shop['budget']['name'] ?? '',
+                        'photo_url' => $shop['photo']['pc']['l']
+                            ?? $shop['photo']['mobile']['l']
+                            ?? null,
+                        'lat' => isset($shop['lat']) ? (float)$shop['lat'] : null,
+                        'lng' => isset($shop['lng']) ? (float)$shop['lng'] : null,
+                    ];
+                }, $shops);
+
+                $nextStart = $start + $returned;
+
+                return [
+                    'shops' => $items,
+                    'meta' => [
+                        'total' => $total,
+                        'start' => $start,
+                        'count' => $count,
+                        'returned' => $returned,
+                        'next_start' => $nextStart,
+                        'has_more' => $nextStart <= $total,
+                    ],
+                ];
             }
         } catch (\Exception $e) {
             Log::warning('HotPepper API error: ' . $e->getMessage());
         }
 
-        return [];
+        return [
+            'shops' => [],
+            'meta' => [
+                'total' => 0,
+                'start' => (int)($params['start'] ?? 1),
+                'count' => (int)($params['count'] ?? 20),
+                'has_more' => false,
+            ],
+        ];
     }
 
-    private function getHistoryShops(string $keyword, int $userId): array
+    private function getHistoryShops(string $keyword, int $userId, int $limit = 5): array
     {
         try {
             return VisitedShop::with('shop:id,shop_name,address,category')
                 ->where('user_id', $userId)
                 ->whereHas('shop', fn($q) => $q->where('shop_name', 'LIKE', '%' . $keyword . '%'))
                 ->orderBy('visited_at', 'desc')
-                ->limit(5)
+                ->limit($limit)
                 ->get()
                 ->map(fn($visitedShop) => [
                     'id' => $visitedShop->shop->id,
@@ -188,7 +293,7 @@ class RestaurantController extends Controller
         try {
             // まずDBから店舗情報を検索（キャッシュチェック）
             $shopData = $this->getOrCreateShopFromHotpepper($hotpepperId);
-            
+
             if (!$shopData) {
                 return response()->json([
                     'success' => false,
@@ -219,20 +324,20 @@ class RestaurantController extends Controller
     {
         // まずDBから検索（キャッシュチェック）
         $shop = Shop::where('hotpepper_id', $hotpepperId)->first();
-        
+
         // DBに存在し、かつ更新から24時間以内なら DBから詳細情報を構築
         if ($shop && $shop->updated_at->diffInHours(now()) < 24) {
             if (config('app.debug')) {
                 Log::info('DBから店舗情報を取得', ['hotpepper_id' => $hotpepperId]);
             }
-            
+
             // DBの基本情報に詳細情報を追加してレスポンス作成
             return $this->buildShopResponse($shop);
         }
 
         // DBに存在しないか古い情報の場合、ホットペッパーAPIから取得
         $apiData = $this->fetchFromHotpepperAPI($hotpepperId);
-        
+
         if (!$apiData) {
             // API取得失敗時はDBの古い情報があれば返す
             return $shop ? $this->buildShopResponse($shop) : null;
@@ -322,14 +427,14 @@ class RestaurantController extends Controller
 
             $data = $response->json();
             $shops = $data['results']['shop'] ?? [];
-            
+
             if (empty($shops)) {
                 Log::info('ホットペッパーAPIで店舗が見つかりませんでした', ['hotpepper_id' => $hotpepperId]);
                 return null;
             }
 
             $shopData = $shops[0]; // 最初の店舗データを使用
-            
+
             return [
                 'hotpepper_id' => $hotpepperId,
                 'name' => $shopData['name'] ?? '',
