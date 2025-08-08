@@ -27,7 +27,7 @@ const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
   loading: () => (
     <div className="h-screen w-full bg-white flex items-center justify-center">
       <div className="text-center">
-        <div className="w-16 h-16 border-4 border-gray-200 rounded-full animate-spin border-t-black mx-auto mb-4"></div>
+        <div className="w-16 h-16 border-4 border-gray-200 rounded-full animate-spin border-t-[#A90017] mx-auto mb-4"></div>
         <p className="text-gray-800 font-medium">地図を読み込んでいます...</p>
       </div>
     </div>
@@ -290,7 +290,7 @@ export default function FullScreenMapPage() {
     return (
       <div className="h-screen w-full bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-200 rounded-full animate-spin border-t-black mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-gray-200 rounded-full animate-spin border-t-[#A90017] mx-auto mb-4"></div>
           <p className="text-gray-800 font-medium">地図を読み込んでいます...</p>
         </div>
       </div>
