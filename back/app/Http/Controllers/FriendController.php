@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\Friend;
+use App\Models\User;
 
 class FriendController extends Controller
 {
@@ -202,6 +203,63 @@ class FriendController extends Controller
         return response()->json([
             'success' => true,
             'message' => [$message],
+        ]);
+    }
+
+    /**
+     * ユーザー検索
+     */
+    public function searchUsers(Request $request): JsonResponse
+    {
+        $request->validate([
+            'query' => 'required|string|min:1|max:255'
+        ]);
+
+        $currentUser = $request->user();
+        $query = $request->input('query');
+
+        // ユーザー名またはメールアドレスで検索
+        $users = User::where(function ($queryBuilder) use ($query) {
+                $queryBuilder->where('name', 'like', '%' . $query . '%')
+                           ->orWhere('email', 'like', '%' . $query . '%');
+            })
+            ->where('id', '!=', $currentUser->id) // 自分を除外
+            ->select('id', 'name', 'email', 'profile_photo_url', 'created_at')
+            ->limit(20) // 検索結果を20件に制限
+            ->get()
+            ->map(function ($user) use ($currentUser) {
+                // フレンド関係の状態をチェック
+                $friendRelation = Friend::where(function ($q) use ($currentUser, $user) {
+                        $q->where('user_id', $currentUser->id)
+                          ->where('friend_user_id', $user->id);
+                    })
+                    ->orWhere(function ($q) use ($currentUser, $user) {
+                        $q->where('user_id', $user->id)
+                          ->where('friend_user_id', $currentUser->id);
+                    })
+                    ->first();
+
+                $friendStatus = 'none'; // none, pending, accepted
+                if ($friendRelation) {
+                    $friendStatus = $friendRelation->status;
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'profile_photo_url' => $user->profile_photo_url,
+                    'friend_status' => $friendStatus,
+                    'joined_at' => $user->created_at->format('Y-m-d'),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'users' => $users,
+            'total' => $users->count(),
+            'query' => $query,
+            'message' => ['ユーザー検索が完了しました']
         ]);
     }
 }

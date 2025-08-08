@@ -18,8 +18,9 @@ return new class extends Migration
             $table->tinyInteger('star')->unsigned()->comment('1-3 stars');
             $table->foreignId('visited_shop_id')->nullable()->constrained('visited_shops')->onDelete('set null');
             $table->string('image_url')->nullable();
+            $table->text('comment')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['guide_id', 'shop_id']);
         });
     }
