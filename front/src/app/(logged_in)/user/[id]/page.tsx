@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Edit, Users, Star, MapPin, Calendar } from 'lucide-react';
 import type { User } from '@/types/user';
+import { getUserProfile, getUserActivities } from '@/requests/user';
 
 interface UserProfile extends User {
   bio?: string;

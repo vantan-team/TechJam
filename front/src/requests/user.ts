@@ -1,6 +1,6 @@
 "use client";
 import * as fetch from "@/utils/fetch";
-import type { AuthStatus } from "@/types/user";
+import type { AuthStatus, Activity, UserProfile } from "@/types/user";
 
 export interface User {
     id: number;
@@ -34,6 +34,17 @@ export async function getUserAuthStatus(): Promise<AuthStatus | null> {
     });
 }
 
+// feature/profile-req の関数
+export async function getUserActivities(userId: string): Promise<Activity[]> {
+    const token = window.localStorage.getItem("access_token") || "";
+    return await fetch.get<Activity[]>(`/api/user/${userId}/activities`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+}
+
+// develop の関数
 export async function getFriends(): Promise<FriendsResponse | null> {
     const token = window.localStorage.getItem("access_token") || "";
     return await fetch.get<FriendsResponse | null>(`/api/friends`, {
@@ -43,23 +54,43 @@ export async function getFriends(): Promise<FriendsResponse | null> {
     });
 }
 
-export async function searchUsers(query: string): Promise<SearchUsersResponse | null> {
+// feature/profile-req の関数
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     const token = window.localStorage.getItem("access_token") || "";
-    return await fetch.post<{ query: string }, SearchUsersResponse | null>(`/api/friends/search`, { query }, {
+    return await fetch.get<UserProfile>(`/api/user/${userId}/profile`, {
         headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            Authorization: `Bearer ${token}`
         }
     });
 }
 
+// develop の関数
+export async function searchUsers(query: string): Promise<SearchUsersResponse | null> {
+    const token = window.localStorage.getItem("access_token") || "";
+    return await fetch.post<{ query: string }, SearchUsersResponse | null>(
+        `/api/friends/search`,
+        { query },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+}
+
+// develop の関数
 export async function sendFriendRequest(userId: number): Promise<any> {
     const token = window.localStorage.getItem("access_token") || "";
-    return await fetch.post<{ request_user_id: number }, any>(`/api/friends/request`, 
-        { request_user_id: userId }, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+    return await fetch.post<{ request_user_id: number }, any>(
+        `/api/friends/request`,
+        { request_user_id: userId },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
         }
-    });
+    );
 }
+
