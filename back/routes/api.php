@@ -43,6 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notification endpoints (authenticated)
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/mark-as-read', [NotificationController::class, 'markAsRead']);
     
     // Visited Shop History endpoints (authenticated)
     Route::post('/history/add', [VisitedShopController::class, 'store']);
