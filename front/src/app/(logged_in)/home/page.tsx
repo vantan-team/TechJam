@@ -3,6 +3,7 @@
 import { UserPlus, ChevronRight, ArrowLeft, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
+import { fetchHomeData, type Guidebook } from '@/requests/home';
 
 // シンプルなマップ表示
 const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
@@ -44,8 +45,29 @@ export default function FullScreenMapPage() {
     setIsClient(true);
   }, []);
 
-  // ガイドブックデータ
-  const guidebooks = [
+  // APIからガイドブックデータを取得
+  const [guidebooks, setGuidebooks] = useState<Guidebook[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadGuidebooks = async () => {
+      try {
+        const data = await fetchHomeData();
+        setGuidebooks(data.guidebooks);
+      } catch (err) {
+        setError('ガイドブックの読み込みに失敗しました');
+        console.error('Failed to fetch guidebooks:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadGuidebooks();
+  }, []);
+
+  // ハードコードされたガイドブックデータ（バックアップ用）
+  const fallbackGuidebooks = [
     {
       id: 1,
       title: "名古屋で感動した中華まとめ",
@@ -208,17 +230,22 @@ export default function FullScreenMapPage() {
     }
   ];
 
+  // 現在使用するガイドブック（API取得データまたはフォールバック）
+  // 本番環境ではフォールバックデータを使用しない
+  const currentGuidebooks = guidebooks.length > 0 ? guidebooks : 
+    (process.env.NODE_ENV === 'development' ? fallbackGuidebooks : []);
+
   // デフォルトマーカー（全ガイドブックの店舗）
-  const defaultMarkers = guidebooks.flatMap(guidebook => guidebook.restaurants);
+  const defaultMarkers = currentGuidebooks.flatMap(guidebook => guidebook.restaurants);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
 
-  // 初期状態では全マーカーを表示
+  // 初回読み込み時に全マーカーを設定
   useEffect(() => {
-    if (selectedMarkers.length === 0) {
+    if (currentGuidebooks.length > 0 && selectedMarkers.length === 0) {
       setSelectedMarkers(defaultMarkers);
     }
-  }, [defaultMarkers, selectedMarkers.length]);
+  }, [currentGuidebooks.length]);
 
   // ガイドブッククリック処理
   const handleGuidebookClick = (guidebook: any) => {
@@ -258,8 +285,8 @@ export default function FullScreenMapPage() {
     }, 50);
   };
 
-  // クライアントサイドでのみレンダリング
-  if (!isClient) {
+  // ローディング状態とエラー状態の表示
+  if (!isClient || loading) {
     return (
       <div className="h-screen w-full bg-white flex items-center justify-center">
         <div className="text-center">
@@ -270,9 +297,22 @@ export default function FullScreenMapPage() {
     );
   }
 
+  if (error && guidebooks.length === 0) {
+    return (
+      <div className="h-screen w-full bg-white flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">データの読み込みに失敗しました</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500">フォールバックデータを表示しています</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-        <div className='fixed from-blue-50 z-50 bottom-[64px] left-0 h-[40%] w-full bg-white/80 backdrop-blur-sm rounded-t-lg flex flex-col overflow-hidden'>
+        <div className='fixed from-blue-50 z-40 bottom-[64px] left-0 h-[40%] w-full bg-white/80 backdrop-blur-sm rounded-t-lg flex flex-col overflow-hidden'>
             {/* ガイドブックリスト画面 */}
             <div className={`w-full h-full flex flex-col transform transition-transform duration-300 ease-in-out ${
               isGuideOpen ? '-translate-x-full' : 'translate-x-0'
@@ -289,7 +329,7 @@ export default function FullScreenMapPage() {
                 )}
               </div>
               <div className='overflow-y-auto flex-1'>
-                  {guidebooks.map((guidebook) => (
+                  {currentGuidebooks.map((guidebook) => (
                     <div 
                       key={guidebook.id}
                       className='flex items-center px-4 pb-1 pt-1 transition-colors duration-200 rounded-lg cursor-pointer hover:bg-gray-100'

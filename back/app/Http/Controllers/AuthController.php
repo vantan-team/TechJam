@@ -30,12 +30,33 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(Request $request): JsonResponse
     {
+        // FormDataとJSONの両方に対応
+        $request->validate([
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:8',
+            'username' => 'required|string|min:3|max:255',
+            'introduction' => 'nullable|string|max:1000',
+            'profileImage' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        // プロフィール画像のアップロード処理
+        $profilePhotoUrl = null;
+        if ($request->hasFile('profileImage')) {
+            $file = $request->file('profileImage');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('uploads/profiles'), $fileName);
+            $profilePhotoUrl = '/uploads/profiles/' . $fileName;
+        }
+
+        // ユーザー作成
         $user = User::create([
-            'name' => $request->name,
+            'name' => $request->username,  // フロントエンドからは"username"で送信される
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'introduction' => $request->introduction,
+            'profile_photo_url' => $profilePhotoUrl,
         ]);
 
         $token = $user->createToken('auth_token', ['full'])->plainTextToken;
@@ -49,7 +70,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'profilePhotoUrl' => $user->profile_photo_url ?? ''
             ],
-            'token' => $token
+            'access_token' => $token  // フロントエンドが期待しているキー名
         ], 201);
     }
 
@@ -76,7 +97,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'profilePhotoUrl' => $user->profile_photo_url ?? ''
             ],
-            'token' => $token
+            'access_token' => $token
         ]);
     }
 

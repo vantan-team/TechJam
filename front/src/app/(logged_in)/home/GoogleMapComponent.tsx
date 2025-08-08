@@ -33,66 +33,57 @@ interface MapProps {
 }
 
 // マーカーに合わせてマップの表示範囲を調整するコンポーネント
-function FitBoundsToMarkers({ markers, selectedMarkerId }: { markers: MarkerData[], selectedMarkerId?: number | null }) {
+function FitBoundsToMarkers({ markers, selectedMarkerId, initialFit = false }: { 
+  markers: MarkerData[], 
+  selectedMarkerId?: number | null,
+  initialFit?: boolean 
+}) {
   const map = useMap();
+  const hasInitialFitted = useRef(false);
 
   useEffect(() => {
+    // 選択されたマーカーにフォーカス（ユーザーが明示的に選択した場合のみ）
     if (selectedMarkerId !== null && selectedMarkerId !== undefined) {
-      // 選択されたマーカーが存在する場合、そのマーカーにフォーカス
       const selectedMarker = markers.find(marker => marker.id === selectedMarkerId);
       if (selectedMarker) {
-        const targetZoom = 16;
-        
-        // マップの状態をリセットしてから新しい位置にフォーカス
-        const focusMarker = () => {
-          // 現在のズームレベルを確認し、目標ズームレベルと比較
-          const currentMapZoom = map.getZoom();
-          const useZoom = currentMapZoom >= targetZoom ? currentMapZoom : targetZoom;
-          
-          const mapSize = map.getSize();
-          // 目標位置：上部25%、左右50%（中央）
-          const targetX = mapSize.x * 0.5;  // 水平中央
-          const targetY = mapSize.y * 0.25; // 上部25%
-          
-          // マーカーが目標位置に来るマップ中心を計算
-          const markerLatLng = L.latLng(selectedMarker.position);
-          
-          // マーカー位置をピクセル座標で取得（使用するズームレベルで）
-          const markerPoint = map.project(markerLatLng, useZoom);
-          
-          // 目標位置に来るための新しいマップ中心を計算
-          const mapCenterX = markerPoint.x - targetX + (mapSize.x * 0.5);
-          const mapCenterY = markerPoint.y - targetY + (mapSize.y * 0.5);
-          const newCenterPoint = L.point(mapCenterX, mapCenterY);
-          
-          // ピクセル座標を地理座標に変換
-          const newCenterLatLng = map.unproject(newCenterPoint, useZoom);
-          
-          // 一度の移動で目標位置にマーカーを配置（ズームレベルを保持）
-          map.setView(newCenterLatLng, useZoom, { 
-            animate: true,
-            duration: 0.5
-          });
-        };
-        
-        // すぐに実行
-        focusMarker();
+        // より控えめなアニメーションでマーカーを表示
+        map.setView(selectedMarker.position, Math.max(map.getZoom(), 15), { 
+          animate: true,
+          duration: 0.3 // 短縮
+        });
       }
-    } else if (markers.length > 0) {
-      const bounds = L.latLngBounds(markers.map(marker => marker.position));
-      
-      // ボトムシートがあるため、マップの中心を上部25%の位置に調整
-      const mapSize = map.getSize();
-      const paddingTop = mapSize.y * 0.1; // 上部10%のパディング
-      const paddingBottom = mapSize.y * 0.5; // 下部50%のパディング（ボトムシート分を考慮）
-      const paddingSide = 20;
-      
-      map.fitBounds(bounds, { 
-        paddingTopLeft: [paddingSide, paddingTop],
-        paddingBottomRight: [paddingSide, paddingBottom]
-      });
     }
-  }, [markers, selectedMarkerId, map]);
+  }, [selectedMarkerId, map]); // markersを依存関係から除外
+
+  useEffect(() => {
+    // 初回のみ、マーカー全体にフィット（複数マーカーがある場合のみ）
+    if (markers.length > 1 && (!hasInitialFitted.current || initialFit)) {
+      setTimeout(() => { // マップの初期化を待つ
+        const bounds = L.latLngBounds(markers.map(marker => marker.position));
+        
+        // ボトムシートを考慮したパディング
+        const mapSize = map.getSize();
+        const paddingTop = mapSize.y * 0.1;
+        const paddingBottom = mapSize.y * 0.5;
+        const paddingSide = 20;
+        
+        map.fitBounds(bounds, { 
+          paddingTopLeft: [paddingSide, paddingTop],
+          paddingBottomRight: [paddingSide, paddingBottom],
+          animate: false, // 初回は滑らかでない移動でOK
+          maxZoom: 15 // 最大ズームレベルを制限
+        });
+        
+        hasInitialFitted.current = true;
+      }, 100); // 短い遅延でマップの準備を待つ
+    } else if (markers.length === 1 && (!hasInitialFitted.current || initialFit)) {
+      // 単一マーカーの場合は適切なズームレベルで表示
+      setTimeout(() => {
+        map.setView(markers[0].position, 14, { animate: false });
+        hasInitialFitted.current = true;
+      }, 100);
+    }
+  }, [markers.length, initialFit, map]); // markers.lengthのみ監視
 
   return null;
 }
@@ -129,8 +120,8 @@ function CustomMarker({ marker, isSelected }: { marker: MarkerData; isSelected: 
 }
 
 export default function SimpleMap({ 
-  center = [35.6762, 139.6503], // 東京駅の座標
-  zoom = 13,
+  center = [35.1698, 136.8913], // 名古屋中心部（栄・名駅の中間）
+  zoom = 12,
   markers = [],
   selectedMarkerId = null,
   showOnlySelected = false
@@ -155,6 +146,11 @@ export default function SimpleMap({
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
         scrollWheelZoom={true}
+        doubleClickZoom={true}
+        touchZoom={true}
+        dragging={true}
+        boxZoom={false}
+        keyboard={true}
         attributionControl={true}
       >
         <TileLayer
@@ -171,7 +167,11 @@ export default function SimpleMap({
           />
         ))}
         {/* マーカーに合わせてマップの表示範囲を調整 */}
-        <FitBoundsToMarkers markers={displayMarkers} selectedMarkerId={selectedMarkerId} />
+        <FitBoundsToMarkers 
+          markers={displayMarkers} 
+          selectedMarkerId={selectedMarkerId}
+          initialFit={displayMarkers.length > 0}
+        />
       </MapContainer>
     </div>
   );
