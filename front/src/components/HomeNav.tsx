@@ -96,15 +96,15 @@ export const HomeNav = () => {
         </Link>
 
         <Link
-          href="/create-guide"
+          href="/add-to-guide"
           className={`group flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
-            isActive("/create-guide") ? "text-[#A90017]" : "text-gray-600"
+            isActive("/add-to-guide") ? "text-[#A90017]" : "text-gray-600"
           }`}
         >
           <span
             className={`grid place-items-center h-12 w-12 rounded-full shadow-sm ring-1 ring-[#A90017]/20 transition-all duration-200
       ${
-        isActive("/create-guide")
+        isActive("/add-to-guide")
           ? "bg-[#A90017]/90 text-white shadow-[#A90017]/30"
           : "bg-[#A90017]/90 text-white"
       }
