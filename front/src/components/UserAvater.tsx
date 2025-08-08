@@ -2,9 +2,13 @@
 import React, { useEffect, useState } from "react";
 import FollowButton from "./FollowButton";
 import { initData } from "@/lib/seeds";
+import { Button } from "./ui/button";
+import { deleteFriend } from "@/requests/user";
+import { Trash2, MessageCircle } from "lucide-react";
 
 type User = {
   id: number;
+  friendship_id?: number;
   name: string;
   email: string;
   profile_photo_url: string | null;
@@ -15,9 +19,11 @@ type User = {
 type Props = {
   slug?: string;
   friends?: User[];
+  onFriendDeleted?: (friendId: number) => void;
 };
 
-export const UserAvater = ({ slug, friends }: Props) => {
+export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   //   const [users, setUsers] = useState<User[]>([]);
   //   useEffect(() => {
   //     const fetchUsers = async () => {
@@ -43,6 +49,32 @@ export const UserAvater = ({ slug, friends }: Props) => {
     profile_photo_url: data.icon,
     friend_status: 'accepted' as const
   }));
+
+  const handleDeleteFriend = async (user: User) => {
+    if (deletingIds.has(user.id)) return;
+    
+    // friendship_idがない場合はエラー
+    if (!user.friendship_id) {
+      console.error('friendship_id is missing for user:', user);
+      return;
+    }
+    
+    setDeletingIds(prev => new Set(prev).add(user.id));
+    try {
+      const response = await deleteFriend(user.friendship_id);
+      if (response?.success) {
+        onFriendDeleted?.(user.id);
+      }
+    } catch (error) {
+      console.error('Failed to delete friend:', error);
+    } finally {
+      setDeletingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(user.id);
+        return newSet;
+      });
+    }
+  };
 
   return (
     <div className="p-4">
@@ -88,21 +120,39 @@ export const UserAvater = ({ slug, friends }: Props) => {
                   <FollowButton />
                 </div>
               ) : (
-                <div className="flex-shrink-0">
-                  <button 
-                    className="px-3 py-1 text-xs text-white rounded-md transition-all duration-200 hover:shadow-sm"
+                <div className="flex-shrink-0 flex gap-2">
+                  <Button
+                    size="sm"
+                    className="text-white transition-all duration-200 transform hover:scale-[1.02]"
                     style={{
-                      backgroundColor: '#A90017',
+                      backgroundColor: "#A90017",
+                      borderColor: "#A90017"
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#940014';
+                      e.currentTarget.style.backgroundColor = "#940014";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#A90017';
+                      e.currentTarget.style.backgroundColor = "#A90017";
                     }}
                   >
+                    <MessageCircle className="w-3 h-3 mr-1" />
                     メッセージ
-                  </button>
+                  </Button>
+                  {friends && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={deletingIds.has(user.id)}
+                      onClick={() => handleDeleteFriend(user)}
+                      className="border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 transform hover:scale-[1.02]"
+                    >
+                      {deletingIds.has(user.id) ? (
+                        <div className="w-3 h-3 border border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash2 className="w-3 h-3" />
+                      )}
+                    </Button>
+                  )}
                 </div>
               )}
             </li>

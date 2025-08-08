@@ -151,4 +151,28 @@ class NotificationController extends Controller
             ]
         ]);
     }
+
+    /**
+     * 通知を既読にマーク（承認されたフレンドと新しいフォロワーのみ）
+     */
+    public function markAsRead(): JsonResponse
+    {
+        $user = Auth::user();
+
+        // 承認されたフレンドの通知を古い日付にマーク（実質的に非表示）
+        Friend::where('user_id', $user->id)
+            ->where('status', 'accepted')
+            ->where('accepted_at', '>=', Carbon::now()->subDays(7))
+            ->update(['accepted_at' => Carbon::now()->subDays(8)]);
+
+        // 新しいフォロワーの通知を古い日付にマーク
+        Follower::where('followed_user_id', $user->id)
+            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->update(['created_at' => Carbon::now()->subDays(8)]);
+
+        return response()->json([
+            'success' => true,
+            'message' => ['通知を既読にマークしました']
+        ]);
+    }
 }
