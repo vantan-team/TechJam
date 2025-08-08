@@ -57,7 +57,7 @@ export async function getFriends(): Promise<FriendsResponse | null> {
 // feature/profile-req の関数
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     const token = window.localStorage.getItem("access_token") || "";
-    return await fetch.get<UserProfile>(`/api/user/${userId}/profile`, {
+    return await fetch.post<null, UserProfile, null>(`/api/user/${userId}`, null , {
         headers: {
             Authorization: `Bearer ${token}`
         }

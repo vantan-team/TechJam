@@ -20,7 +20,7 @@ export const UserIcon = ({
       className="flex items-center justify-center"
     >
       <Avatar>
-        <AvatarImage src={icon || user?.profilePhotoUrl} />
+        <AvatarImage src={icon || `${process.env.NEXT_PUBLIC_API_ROOT}${user?.profilePhotoUrl}`} className=" object-cover" />
         <AvatarFallback>
           {user?.name?.charAt(0) || "U"}
         </AvatarFallback>

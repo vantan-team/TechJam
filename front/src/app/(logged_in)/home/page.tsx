@@ -3,7 +3,7 @@
 import { UserPlus, ChevronRight, ArrowLeft, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
-import { fetchHomeData, type Guidebook } from '@/requests/home';
+import { getHomeGuidebooks, type Guidebook } from '@/requests/home';
 
 // シンプルなマップ表示
 const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
@@ -53,7 +53,7 @@ export default function FullScreenMapPage() {
   useEffect(() => {
     const loadGuidebooks = async () => {
       try {
-        const data = await fetchHomeData();
+        const data = await getHomeGuidebooks();
         setGuidebooks(data.guidebooks);
       } catch (err) {
         setError('ガイドブックの読み込みに失敗しました');
@@ -66,174 +66,10 @@ export default function FullScreenMapPage() {
     loadGuidebooks();
   }, []);
 
-  // ハードコードされたガイドブックデータ（バックアップ用）
-  const fallbackGuidebooks = [
-    {
-      id: 1,
-      title: "名古屋で感動した中華まとめ",
-      author: "ドンキー",
-      followers: 30,
-      image: "https://shirodashi.co.jp/wp-content/uploads/2020/11/3288bf4a573065863272d7792bdaece4.jpg",
-      description: "名古屋で絶対に行くべき中華料理店を厳選しました。本格的な四川料理から地元で愛される老舗まで、必見のお店ばかりです。",
-      restaurants: [
-        {
-          id: 1,
-          position: [35.1815, 136.9066] as [number, number], // 名古屋駅周辺
-          title: "陳麻婆豆腐 名古屋店",
-          popup: "🥢 陳麻婆豆腐 名古屋店<br />本格四川料理の老舗",
-          description: "本格的な四川料理が味わえる老舗中華料理店。特に麻婆豆腐は絶品で、本場の味を楽しめます。",
-          image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400",
-          rating: 4.5,
-          priceRange: "¥¥¥"
-        },
-        {
-          id: 2,
-          position: [35.1669, 136.9001] as [number, number], // 栄周辺
-          title: "龍の家",
-          popup: "🐉 龍の家<br />地元で愛される中華料理店",
-          description: "地元の人に愛され続ける中華料理店。リーズナブルな価格で本格的な中華が楽しめます。",
-          image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400",
-          rating: 4.2,
-          priceRange: "¥¥"
-        },
-        {
-          id: 3,
-          position: [35.1712, 136.8815] as [number, number], // 金山周辺
-          title: "味仙 今池本店",
-          popup: "🌶️ 味仙 今池本店<br />名古屋名物台湾ラーメン発祥の店",
-          description: "名古屋名物台湾ラーメン発祥の店として有名。辛くて美味しい台湾ラーメンは一度食べたらやみつきに。",
-          image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400",
-          rating: 4.3,
-          priceRange: "¥¥"
-        },
-        {
-          id: 4,
-          position: [35.1858, 136.8992] as [number, number], // 大須周辺
-          title: "中華料理 上海",
-          popup: "🏮 中華料理 上海<br />老舗の中華料理店",
-          description: "昭和から続く老舗の中華料理店。懐かしい味わいの中華料理が楽しめる隠れた名店です。",
-          image: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400",
-          rating: 4.0,
-          priceRange: "¥¥"
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: "名古屋グルメ完全攻略",
-      author: "フードハンター",
-      followers: 45,
-      image: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Hitsumabushi_by_Naotake_Murayama.jpg/1280px-Hitsumabushi_by_Naotake_Murayama.jpg",
-      description: "名古屋を代表するグルメを完全攻略！みそかつ、ひつまぶし、手羽先など、名古屋に来たら絶対に食べるべき名物料理の名店をご紹介。",
-      restaurants: [
-        {
-          id: 5,
-          position: [35.1709, 136.8811] as [number, number],
-          title: "矢場とん 本店",
-          popup: "🐷 矢場とん 本店<br />名古屋名物みそかつの名店",
-          description: "名古屋名物みそかつの代表格。秘伝の八丁味噌だれが絶品で、観光客にも地元の人にも愛され続けています。",
-          image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400",
-          rating: 4.4,
-          priceRange: "¥¥"
-        },
-        {
-          id: 6,
-          position: [35.1681, 136.9012] as [number, number],
-          title: "ひつまぶし あつた蓬莱軒",
-          popup: "🍱 ひつまぶし あつた蓬莱軒<br />ひつまぶし発祥の老舗",
-          description: "ひつまぶし発祥の老舗として有名。3つの食べ方で楽しむ伝統の味は、名古屋グルメの王道です。",
-          image: "https://images.unsplash.com/photo-1553621042-f6e147245754?w=400",
-          rating: 4.6,
-          priceRange: "¥¥¥"
-        },
-        {
-          id: 7,
-          position: [35.1634, 136.9052] as [number, number],
-          title: "世界の山ちゃん 本店",
-          popup: "🍗 世界の山ちゃん 本店<br />手羽先で有名な居酒屋チェーン",
-          description: "名古屋名物手羽先の代表格。スパイシーで病みつきになる味は、ビールとの相性も抜群です。",
-          image: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=400",
-          rating: 4.2,
-          priceRange: "¥¥"
-        },
-        {
-          id: 8,
-          position: [35.1668, 136.9002] as [number, number],
-          title: "風来坊 栄本店",
-          popup: "🍗 風来坊 栄本店<br />手羽先唐揚げ発祥の店",
-          description: "手羽先唐揚げ発祥の店として知られる老舗。シンプルながら奥深い味わいの手羽先が自慢です。",
-          image: "https://images.unsplash.com/photo-1594221708779-94832f4320d1?w=400",
-          rating: 4.3,
-          priceRange: "¥¥"
-        },
-        {
-          id: 9,
-          position: [35.1702, 136.9101] as [number, number],
-          title: "山本屋総本家",
-          popup: "🍲 山本屋総本家<br />名古屋名物味噌煮込みうどん",
-          description: "名古屋名物味噌煮込みうどんの老舗中の老舗。濃厚な八丁味噌のスープと固めの麺が絶妙なバランス。",
-          image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400",
-          rating: 4.1,
-          priceRange: "¥¥"
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: "名古屋の隠れ家カフェ特集",
-      author: "カフェマニア",
-      followers: 62,
-      image: "https://images.unsplash.com/photo-1511920170033-f8396924c348?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      description: "名古屋の知る人ぞ知る隠れ家カフェから有名店まで。コーヒー好きなら絶対に訪れたいカフェを厳選してご紹介します。",
-      restaurants: [
-        {
-          id: 10,
-          position: [35.1647, 136.9001] as [number, number],
-          title: "コメダ珈琲店 本店",
-          popup: "☕ コメダ珈琲店 本店<br />名古屋発祥の喫茶店チェーン",
-          description: "名古屋発祥の喫茶店チェーンの本店。名物シロノワールは甘党にはたまらない一品です。",
-          image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400",
-          rating: 4.0,
-          priceRange: "¥¥"
-        },
-        {
-          id: 11,
-          position: [35.1675, 136.9085] as [number, number],
-          title: "珈琲所 コメダ珈琲店",
-          popup: "☕ 珈琲所 コメダ珈琲店<br />シロノワールで有名",
-          description: "落ち着いた雰囲気でゆっくりとコーヒーを楽しめる店舗。モーニングサービスも充実しています。",
-          image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400",
-          rating: 4.1,
-          priceRange: "¥¥"
-        },
-        {
-          id: 12,
-          position: [35.1598, 136.8889] as [number, number],
-          title: "喫茶マウンテン",
-          popup: "🗻 喫茶マウンテン<br />奇想天外なメニューで有名",
-          description: "奇想天外なメニューで有名なB級グルメの聖地。甘いスパゲティなど、他では味わえない体験ができます。",
-          image: "https://images.unsplash.com/photo-1571167433940-4b5100e1d67c?w=400",
-          rating: 3.8,
-          priceRange: "¥"
-        },
-        {
-          id: 13,
-          position: [35.1723, 136.9234] as [number, number],
-          title: "ブルーシール カフェ",
-          popup: "🍦 ブルーシール カフェ<br />沖縄発のアイスクリーム店",
-          description: "沖縄発の人気アイスクリーム店。トロピカルな味わいのアイスクリームが楽しめます。",
-          image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400",
-          rating: 4.2,
-          priceRange: "¥¥"
-        }
-      ]
-    }
-  ];
 
   // 現在使用するガイドブック（API取得データまたはフォールバック）
   // 本番環境ではフォールバックデータを使用しない
-  const currentGuidebooks = guidebooks.length > 0 ? guidebooks : 
-    (process.env.NODE_ENV === 'development' ? fallbackGuidebooks : []);
+  const currentGuidebooks = guidebooks;
 
   // デフォルトマーカー（全ガイドブックの店舗）
   const defaultMarkers = currentGuidebooks.flatMap(guidebook => guidebook.restaurants);
