@@ -7,6 +7,8 @@ use App\Http\Controllers\FriendController;
 use App\Http\Controllers\FollowController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RestaurantController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\VisitedShopController;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -32,9 +34,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // User endpoints (authenticated)
     Route::post('/user/follow', [FollowController::class, 'follow']);
     Route::post('/user/{id}/followed', [FollowController::class, 'getFollowed']);
+    Route::post('/user/{id}/visited_history', [VisitedShopController::class, 'getUserHistory']);
 
     // Restaurant endpoints (authenticated)
     Route::post('/restaurants/add-to-guide', [RestaurantController::class, 'addToGuide']);
+    
+    // Notification endpoints (authenticated)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    
+    // Visited Shop History endpoints (authenticated)
+    Route::post('/history/add', [VisitedShopController::class, 'store']);
 
 });
 
