@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import FollowButton from "./FollowButton";
 import { initData } from "@/lib/seeds";
 import { Button } from "./ui/button";
 import { deleteFriend } from "@/requests/user";
-import { Trash2, MessageCircle } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 type User = {
   id: number;
@@ -89,7 +89,7 @@ export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
                 {user.profile_photo_url ? (
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
                     <img 
-                      src={user.profile_photo_url} 
+                      src={`${process.env.NEXT_PUBLIC_API_ROOT}${user.profile_photo_url}`}
                       alt={user.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -110,9 +110,6 @@ export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
 
               <div className="flex-grow">
                 <h2 className="text-gray-900 font-medium text-sm">{user.name}</h2>
-                <p className="text-gray-500 text-xs mt-1">
-                  {user.email || ('joined_at' in user && user.joined_at) ? (user.email || `参加日: ${('joined_at' in user) ? user.joined_at : ''}`) : 'オンライン'}
-                </p>
               </div>
               
               {slug ? (
@@ -120,24 +117,7 @@ export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
                   <FollowButton />
                 </div>
               ) : (
-                <div className="flex-shrink-0 flex gap-2">
-                  <Button
-                    size="sm"
-                    className="text-white transition-all duration-200 transform hover:scale-[1.02]"
-                    style={{
-                      backgroundColor: "#A90017",
-                      borderColor: "#A90017"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#940014";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#A90017";
-                    }}
-                  >
-                    <MessageCircle className="w-3 h-3 mr-1" />
-                    メッセージ
-                  </Button>
+                <div className="flex-shrink-0">
                   {friends && (
                     <Button
                       size="sm"

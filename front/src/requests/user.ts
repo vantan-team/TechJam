@@ -252,3 +252,59 @@ export async function markNotificationsAsRead(): Promise<any> {
     },
   });
 }
+
+// ====== フォロー関連 ======
+
+export interface FollowUser {
+  id: string;
+  name: string;
+  introduction: string;
+  profilePhotoUrl: string;
+  follow: number;
+  follower: number;
+  is_friend: boolean;
+}
+
+export interface FollowersResponse {
+  success: boolean;
+  message: string | string[];
+  followers: FollowUser[];
+}
+
+export interface FollowedResponse {
+  success: boolean;
+  message: string | string[];
+  followed: FollowUser[];
+}
+
+/**
+ * 指定ユーザーのフォロワーリストを取得
+ */
+export async function getFollowers(userId: string): Promise<FollowersResponse | null> {
+  return await fetch.post<null, FollowersResponse | null>(
+    `/api/user/${userId}/followers`,
+    null,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+/**
+ * 指定ユーザーのフォロー中リストを取得
+ */
+export async function getFollowed(userId: string): Promise<FollowedResponse | null> {
+  return await fetch.post<null, FollowedResponse | null>(
+    `/api/user/${userId}/followed`,
+    null,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}

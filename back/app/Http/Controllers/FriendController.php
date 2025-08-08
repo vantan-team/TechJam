@@ -119,6 +119,13 @@ class FriendController extends Controller
                 'accepted_at' => now(),
             ]);
 
+            // 通知ログに記録（デバッグ用）
+            \Log::info('Friend request auto accepted', [
+                'friend_request_id' => $existingRequest->id,
+                'from_user_id' => $existingRequest->user_id,
+                'to_user_id' => $existingRequest->friend_user_id,
+            ]);
+
             return response()->json([
                 'success' => true,
                 'status' => 'accept',
@@ -165,6 +172,13 @@ class FriendController extends Controller
         $friendRequest->update([
             'status' => 'accepted',
             'accepted_at' => now(),
+        ]);
+
+        // 通知ログに記録（デバッグ用）
+        \Log::info('Friend request accepted', [
+            'friend_request_id' => $friendRequest->id,
+            'from_user_id' => $friendRequest->user_id,
+            'to_user_id' => $friendRequest->friend_user_id,
         ]);
 
         return response()->json([
