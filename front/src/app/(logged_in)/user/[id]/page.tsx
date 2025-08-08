@@ -196,7 +196,7 @@ export default function UserPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-xs text-gray-600">フォロワー</div>
-                  <Link href={`./${userProfile.id}/followers`}>
+                  <Link href={`./${userProfile.id}/followered`}>
                     <div className="text-lg font-bold text-gray-900">{userProfile.followersCount || 0}</div>
                   </Link>
                 </div>
