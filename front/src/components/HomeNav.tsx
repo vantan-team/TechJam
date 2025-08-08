@@ -132,15 +132,7 @@ export const HomeNav = () => {
             </span>
           )}
         </Link>
-
-        <Link
-          href="/user/profile"
-          className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 transform hover:scale-[1.1] hover:bg-[#A90017]/10 ${
-            isActive("/user/profile") ? "text-[#A90017]" : "text-gray-600"
-          }`}
-        >
-          <UserIcon />
-        </Link>
+        <UserIcon />
       </div>
     </nav>
   );

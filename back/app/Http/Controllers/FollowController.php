@@ -12,6 +12,26 @@ use App\Models\Friend;
 class FollowController extends Controller
 {
     /**
+     * ログインユーザーが指定ユーザーをフォローしているか判定
+     */
+    public function followStatus($id): JsonResponse
+    {
+        $currentUser = Auth::user();
+        $targetUser = User::find($id);
+        if (!$currentUser || !$targetUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ユーザーが見つかりません',
+                'is_following' => false
+            ], 404);
+        }
+        $isFollowing = $currentUser->isFollowingCheck($targetUser);
+        return response()->json([
+            'success' => true,
+            'is_following' => $isFollowing
+        ]);
+    }
+    /**
      * フォロー/アンフォロー処理
      */
     public function follow(FollowRequest $request): JsonResponse
@@ -89,7 +109,7 @@ class FollowController extends Controller
     public function getFollowed($id): JsonResponse
     {
         $currentUserId = Auth::id();
-        
+
         // 指定されたユーザーが存在するかチェック
         $targetUser = User::find($id);
         if (!$targetUser) {
@@ -107,7 +127,7 @@ class FollowController extends Controller
                 'message' => 'このユーザーのプロフィールは非公開です'
             ], 403);
         }
-        
+
         try {
             $followedUsers = User::whereIn('id', function($query) use ($id) {
                 $query->select('followed_user_id')
@@ -173,7 +193,7 @@ class FollowController extends Controller
     private function checkIfFriend(?int $userId1, int $userId2): bool
     {
         if (!$userId1) return false;
-        
+
         return Friend::where(function ($query) use ($userId1, $userId2) {
             $query->where('user_id', $userId1)
                   ->where('friend_user_id', $userId2);

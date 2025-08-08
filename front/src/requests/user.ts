@@ -1,6 +1,6 @@
 "use client";
 import * as fetch from "@/utils/fetch";
-import type { AuthStatus, Activity, UserProfile } from "@/types/user";
+import type { AuthStatus, UserProfile, VisitedHistory, GuideBook } from "@/types/user";
 
 // ====== 共通型 ======
 export interface User {
@@ -80,17 +80,68 @@ export async function getUserAuthStatus(): Promise<AuthStatus | null> {
   });
 }
 
-export async function getUserActivities(userId: string): Promise<Activity[]> {
-  return await fetch.get<Activity[]>(`/api/user/${userId}/activities`, {
+interface VisitedHistoryResponse {
+  success: boolean;
+  message: string[];
+  visited_history: VisitedHistory[];
+}
+
+export async function getVisitedHistory(userId: string): Promise<VisitedHistory[]> {
+  const res = await fetch.post<null, VisitedHistoryResponse, null>(`/api/user/${userId}/visited_history`, null, {
     headers: authHeader(),
   });
+  return res?.visited_history ?? [];
 }
 
 // 統合版 getUserProfile
+interface GetUserProfileApiResponse {
+  success: boolean;
+  message: string[];
+  is_private: boolean;
+  user?: {
+    id: string;
+    name: string;
+    introduction?: string;
+    profilePhotoUrl?: string;
+    follow?: number;
+    follower?: number;
+    is_friend?: boolean;
+  };
+}
+
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  return await fetch.get<UserProfile>(`/api/user/${userId}/profile`, {
+  const res = await fetch.post<null, GetUserProfileApiResponse, null>(`/api/user/${userId}`, null, {
     headers: authHeader(),
   });
+
+  if (!res || !res.success || !res.user) return null;
+
+  const u = res.user;
+  const mapped: UserProfile = {
+    id: u.id,
+    name: u.name,
+    profilePhotoUrl: u.profilePhotoUrl,
+    bio: u.introduction,
+    followersCount: u.follower,
+    followingCount: u.follow,
+    isFriend: u.is_friend,
+    isPrivate: res.is_private,
+  };
+
+  return mapped;
+}
+
+interface GuideBooksResponse {
+  success: boolean;
+  message: string[];
+  books: GuideBook[];
+}
+
+export async function getGuideBooks(userId: string): Promise<GuideBook[]> {
+  const res = await fetch.post<null, GuideBooksResponse, null>(`/api/user/${userId}/guide_books`, null, {
+    headers: authHeader(),
+  });
+  return res?.books ?? [];
 }
 
 // ====== フレンド ======
@@ -141,11 +192,50 @@ export async function deleteFriend(friendId: number): Promise<any> {
   });
 }
 
+/**
+ * ユーザーフォロー/アンフォローAPI
+ */
+export interface FollowUserRequest {
+  follow_user_id: number;
+  type: "follow" | "unfollow";
+}
+export interface FollowUserResponse {
+  success: boolean;
+  message: string[];
+}
+export async function followUser(params: FollowUserRequest): Promise<FollowUserResponse> {
+  return await fetch.post<FollowUserRequest, FollowUserResponse>(
+    "/api/user/follow",
+    params,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
 // ====== 通知 ======
 export async function getNotifications(): Promise<NotificationsResponse | null> {
   return await fetch.get<NotificationsResponse | null>(`/api/notifications`, {
     headers: authHeader(),
   });
+}
+
+// ユーザーのフォロー状態を取得
+export interface UserFollowStatusResponse {
+  success: boolean;
+  is_following: boolean;
+}
+
+export async function getUserFollowStatus(userId: string | number): Promise<boolean> {
+  const res = await fetch.post<null, UserFollowStatusResponse, null>(
+    `/api/user/${userId}/followed/status`,
+    null,
+    { headers: authHeader() }
+  );
+  return !!res?.is_following;
 }
 
 export async function getUnreadCount(): Promise<UnreadCountResponse | null> {
@@ -162,4 +252,3 @@ export async function markNotificationsAsRead(): Promise<any> {
     },
   });
 }
-

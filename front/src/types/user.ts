@@ -6,7 +6,7 @@ export type AuthStatus = {
 export type User = {
     id: string;
     name: string;
-    email: string;
+    email?: string;
     profilePhotoUrl?: string;
 }
 
@@ -19,6 +19,13 @@ export type Activity = {
   icon: 'guidebook' | 'star' | 'users';
 }
 
+export interface VisitedHistory {
+  name: string;
+  visited_at: string;
+  memo: string;
+  hotpepper_id: number;
+}
+
 export interface UserProfile extends User {
   bio?: string;
   followersCount?: number;
@@ -26,4 +33,15 @@ export interface UserProfile extends User {
   guidebooksCount?: number;
   isFollowing?: boolean;
   isFriend?: boolean;
+  isPrivate?: boolean;
+}
+
+export interface GuideBook {
+  id: number;
+  title: string;
+  memo: string;
+  hotpepper_id: number;
+  geo: string;
+  genre: string | null;
+  cover_image?: string;
 }

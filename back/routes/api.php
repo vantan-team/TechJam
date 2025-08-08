@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User endpoints (authenticated)
     Route::post('/user/follow', [FollowController::class, 'follow']);
+    Route::post('/user/{id}/followed/status', [FollowController::class, 'followStatus']);
     Route::post('/user/{id}/followed', [FollowController::class, 'getFollowed']);
     Route::post('/user/{id}/guide_books', [UserController::class, 'guidebooks'])->whereNumber('id');
     Route::post('/user/{id}/visited_history', [VisitedShopController::class, 'getUserHistory']);
