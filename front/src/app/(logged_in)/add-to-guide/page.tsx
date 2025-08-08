@@ -26,6 +26,7 @@ interface Guidebook {
   description: string;
   restaurant_count: number;
   image_url?: string;
+  created_at?: string;
 }
 
 export default function AddToGuidePage() {
@@ -46,6 +47,8 @@ export default function AddToGuidePage() {
   const [newGuidebookTitle, setNewGuidebookTitle] = useState('');
   const [newGuidebookImage, setNewGuidebookImage] = useState<File | null>(null);
   const [newGuidebookImagePreview, setNewGuidebookImagePreview] = useState<string>('');
+  const [newGuidebookGeo, setNewGuidebookGeo] = useState<string>('');
+  const [newGuidebookGenre, setNewGuidebookGenre] = useState<string>('');
   const [showCreateGuidebook, setShowCreateGuidebook] = useState(false);
 
   // Restaurant search
@@ -93,6 +96,10 @@ export default function AddToGuidePage() {
       description: 'その分野で美味しく、質の高い料理を提供',
     },
   ] as const;
+
+  // オプション（任意）
+  const GEO_OPTIONS = ['東京', '大阪', '京都', '神奈川', '愛知', '北海道', '福岡', '沖縄', '海外', 'その他'];
+  const GENRE_OPTIONS = ['和食', 'フレンチ', 'イタリアン', '中華', '韓国料理', 'エスニック', 'カフェ', 'バー', 'ラーメン', '寿司', '焼肉', '居酒屋', 'ファストフード', 'スイーツ', 'その他'];
 
   // Load guidebooks
   useEffect(() => {
@@ -227,6 +234,8 @@ export default function AddToGuidePage() {
       const form = new FormData();
       form.append('title', newGuidebookTitle.trim());
       if (newGuidebookImage) form.append('image', newGuidebookImage);
+      if (newGuidebookGeo) form.append('geo', newGuidebookGeo);
+      if (newGuidebookGenre) form.append('genre', newGuidebookGenre);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/guidebooks`, {
         method: 'POST',
@@ -239,21 +248,15 @@ export default function AddToGuidePage() {
 
       if (response.ok) {
         const data = await response.json();
-        const newGuidebook: Guidebook = {
-          id: data.guidebook.id,
-          title: data.guidebook.title,
-          description: '',
-          restaurant_count: 0,
-          image_url: data.guidebook.image_url
-        };
-
-        setGuidebooks([...guidebooks, newGuidebook]);
-        setSelectedGuidebook(newGuidebook);
+        // サーバ仕様（プロフィール一覧と同一）に合わせて作成後に一覧を再取得
+        await loadGuidebooks();
         // 作成後にすぐレストラン選択へ進まない仕様に変更
         setShowCreateGuidebook(false);
         setNewGuidebookTitle('');
         setNewGuidebookImage(null);
         setNewGuidebookImagePreview('');
+        setNewGuidebookGeo('');
+        setNewGuidebookGenre('');
       }
     } catch (error) {
       console.error('Failed to create guidebook:', error);
@@ -415,9 +418,9 @@ export default function AddToGuidePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-gray-100"
+              className="bg-transparent"
             >
-              <div className="p-6 sm:p-12">
+              <div className="p-4 sm:p-6">
                 {/* ガイドブック作成画面はナビから遷移するため戻るは不要 */}
                 <div className="text-center mb-16">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#A90017] rounded-full flex items-center justify-center mx-auto mb-8">
@@ -454,9 +457,12 @@ export default function AddToGuidePage() {
                           <h3 className="font-bold text-[#2c1810] mb-1 text-base sm:text-lg truncate" style={{fontFamily: '"Playfair Display", serif'}}>
                             {guidebook.title}
                           </h3>
-                          <p className="text-xs sm:text-sm text-[#8b7355] font-medium">
-                            {guidebook.restaurant_count}軒のレストラン
-                          </p>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-[#8b7355] font-medium">
+                          <span>{guidebook.restaurant_count}軒のレストラン</span>
+                          {guidebook.created_at && (
+                            <span className="text-gray-400">・{guidebook.created_at}</span>
+                          )}
+                        </div>
                         </div>
                       </div>
                     </button>
@@ -469,7 +475,7 @@ export default function AddToGuidePage() {
                       <div className="w-full border-t border-[#A90017]/60"></div>
                     </div>
                     <div className="relative flex justify-center text-xs">
-                      <span className="px-4 sm:px-6 bg-[#faf9f7] sm:bg-white text-gray-400">または</span>
+                      <span className="px-6 bg-[#faf9f7] text-gray-400">または</span>
                     </div>
                   </div>
                 )}
@@ -488,47 +494,115 @@ export default function AddToGuidePage() {
                   setShowCreateGuidebook(o);
                   if (!o) { setNewGuidebookImage(null); setNewGuidebookImagePreview(''); }
                 }}>
-                  <DialogContent showCloseButton={false} className="sm:max-w-xl md:max-w-2xl p-0 gap-0 overflow-hidden bg-white border border-gray-100">
-                    <DialogHeader className="p-5 pb-2">
-                      <DialogTitle className="text-xl sm:text-2xl font-bold text-[#2c1810]" style={{fontFamily: '"Playfair Display", serif'}}>新しいガイドブックを作成</DialogTitle>
+                  <DialogContent showCloseButton={false} className="w-[calc(100%-2rem)] max-w-md mx-auto h-auto max-h-[90vh] p-0 gap-0 overflow-hidden bg-white border border-gray-100 rounded-lg flex flex-col">
+                    <DialogHeader className="p-4 pb-3 bg-white border-b border-gray-100 flex-shrink-0">
+                      <DialogTitle className="text-lg font-bold text-[#2c1810] text-center" style={{fontFamily: '"Playfair Display", serif'}}>新しいガイドブックを作成</DialogTitle>
                       <div className="w-12 h-0.5 bg-[#A90017] mt-2 mx-auto" />
                     </DialogHeader>
-                    <div className="p-5 space-y-4">
-                      {newGuidebookImagePreview && (
-                        <div className="w-full aspect-[16/9] max-h-[320px] sm:max-h-[360px] bg-white rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center relative">
-                          <img src={newGuidebookImagePreview} alt="preview" className="block w-full h-full object-cover" />
-                          <button type="button" onClick={() => { setNewGuidebookImage(null); setNewGuidebookImagePreview(''); }} className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-2" aria-label="画像を削除">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-
+                    <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+                      {/* 1. タイトル（最重要・必須） */}
                       <div>
-                        <label className="block text-sm font-semibold text-[#5a4a3a] mb-2">カバー画像（任意）</label>
-                        <div className="flex items-center gap-3">
-                          <label className="inline-flex items-center gap-2 px-4 py-2 border border-[#A90017]/30 rounded-xl cursor-pointer text-sm text-[#5a4a3a] hover:bg-white">
-                            <ImageIcon className="w-4 h-4 text-[#A90017]"/>
-                            画像を選択
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0] || null;
-                              setNewGuidebookImage(file);
-                              if (file) { setNewGuidebookImagePreview(URL.createObjectURL(file)); } else { setNewGuidebookImagePreview(''); }
-                            }} />
-                          </label>
-                          {newGuidebookImage && (
-                            <span className="text-xs text-gray-600 truncate max-w-[60%]">{newGuidebookImage.name}</span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-xs text-gray-400">JPEG/PNG/WEBP、最大16MBまで</p>
+                        <label className="block text-sm font-semibold text-[#2c1810] mb-2">ガイドブックのタイトル <span className="text-[#A90017]">*</span></label>
+                        <input 
+                          type="text" 
+                          value={newGuidebookTitle} 
+                          onChange={(e) => setNewGuidebookTitle(e.target.value)} 
+                          placeholder="例: 私のお気に入りレストラン" 
+                          className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg focus:border-[#A90017] focus:ring-0 focus:outline-none text-base placeholder:text-sm transition-colors" 
+                          autoFocus
+                        />
                       </div>
 
+                      {/* 2. カバー画像（視覚的要素） */}
                       <div>
-                        <label className="block text-sm font-semibold text-[#5a4a3a] mb-2">ガイドブックのタイトル *</label>
-                        <input type="text" value={newGuidebookTitle} onChange={(e) => setNewGuidebookTitle(e.target.value)} placeholder="例: 私のお気に入りレストラン" className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:border-[#A90017] focus:ring-0 focus:outline-none text-base placeholder:text-sm sm:placeholder:text-base transition-colors" />
+                        <label className="block text-sm font-semibold text-[#5a4a3a] mb-2">カバー画像 <span className="text-gray-400 font-normal">（任意）</span></label>
+                        {newGuidebookImagePreview && (
+                          <div className="w-full aspect-square max-h-[120px] bg-white rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center relative mb-2">
+                            <img src={newGuidebookImagePreview} alt="preview" className="block w-full h-full object-cover" />
+                            <button type="button" onClick={() => { setNewGuidebookImage(null); setNewGuidebookImagePreview(''); }} className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1.5" aria-label="画像を削除">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                        <label className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-[#A90017]/30 rounded-lg cursor-pointer text-sm text-[#5a4a3a] hover:bg-gray-50 transition-colors">
+                          <ImageIcon className="w-4 h-4 text-[#A90017]"/>
+                          {newGuidebookImage ? '画像を変更' : '画像を選択'}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setNewGuidebookImage(file);
+                            if (file) { setNewGuidebookImagePreview(URL.createObjectURL(file)); } else { setNewGuidebookImagePreview(''); }
+                          }} />
+                        </label>
+                      </div>
+
+                      {/* 3. エリア（分類情報） */}
+                      <div>
+                        <label className="block text-sm font-semibold text-[#5a4a3a] mb-2">
+                          エリア <span className="text-gray-400 font-normal">（任意）</span>
+                        </label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setNewGuidebookGeo('')}
+                            className={`px-2 py-1.5 rounded text-xs border transition-colors ${
+                              newGuidebookGeo === '' ? 'bg-[#A90017] text-white border-[#A90017]' : 'bg-white text-[#5a4a3a] border-gray-300 hover:border-[#A90017]'
+                            }`}
+                          >未指定</button>
+                          {GEO_OPTIONS.slice(0, 11).map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => setNewGuidebookGeo(g)}
+                              className={`px-2 py-1.5 rounded text-xs border transition-colors ${
+                                newGuidebookGeo === g ? 'bg-[#A90017] text-white border-[#A90017]' : 'bg-white text-[#5a4a3a] border-gray-300 hover:border-[#A90017]'
+                              }`}
+                            >{g}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. ジャンル（分類情報） */}
+                      <div>
+                        <label className="block text-sm font-semibold text-[#5a4a3a] mb-2">
+                          ジャンル <span className="text-gray-400 font-normal">（任意）</span>
+                        </label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setNewGuidebookGenre('')}
+                            className={`px-2 py-1.5 rounded text-xs border transition-colors ${
+                              newGuidebookGenre === '' ? 'bg-[#A90017] text-white border-[#A90017]' : 'bg-white text-[#5a4a3a] border-gray-300 hover:border-[#A90017]'
+                            }`}
+                          >未指定</button>
+                          {GENRE_OPTIONS.map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => setNewGuidebookGenre(g)}
+                              className={`px-2 py-1.5 rounded text-xs border transition-colors ${
+                                newGuidebookGenre === g ? 'bg-[#A90017] text-white border-[#A90017]' : 'bg-white text-[#5a4a3a] border-gray-300 hover:border-[#A90017]'
+                              }`}
+                            >{g}</button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    <div className="p-5 pt-0">
-                      <button onClick={async () => { await createGuidebook(); setShowCreateGuidebook(false); }} disabled={!newGuidebookTitle.trim()} className="w-full py-3 px-6 bg-[#A90017] text-white rounded-xl hover:bg-[#940014] disabled:bg-[#A90017]/25 disabled:text-white/80 font-semibold transition-colors">作成</button>
+                    <div className="p-4 pt-3 bg-white border-t border-gray-100 flex-shrink-0">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowCreateGuidebook(false)}
+                          className="flex-1 py-2.5 px-4 border border-gray-300 bg-white text-[#5a4a3a] rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm"
+                        >
+                          キャンセル
+                        </button>
+                        <button 
+                          onClick={async () => { await createGuidebook(); setShowCreateGuidebook(false); }} 
+                          disabled={!newGuidebookTitle.trim()} 
+                          className="flex-1 py-2.5 px-4 bg-[#A90017] text-white rounded-lg hover:bg-[#940014] disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors text-sm"
+                        >
+                          作成
+                        </button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -541,9 +615,9 @@ export default function AddToGuidePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-gray-100"
+              className="bg-transparent"
             >
-              <div className="p-6 sm:p-12">
+              <div className="p-4 sm:p-6">
                 {/* 戻るボタン（レストラン追加時はヘッダーを出さないため） */}
                 <div className="mb-6 sm:mb-8">
                   <button
@@ -747,16 +821,16 @@ export default function AddToGuidePage() {
 
                 {/* 選択されたレストラン表示 */}
                 {selectedRestaurant && (
-                  <div className="mb-16 p-8 bg-white rounded-2xl border-2 border-[#A90017] shadow-sm">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-[#A90017] rounded-xl flex items-center justify-center">
-                        <span className="text-white text-2xl">🍽️</span>
+                  <div className="mb-12 p-6 bg-white rounded-2xl border-2 border-[#A90017] shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-[#A90017] rounded-xl flex items-center justify-center">
+                        <span className="text-white text-xl">🍽️</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-[#2c1810] truncate text-xl mb-2" style={{fontFamily: '"Playfair Display", serif'}}>
+                        <h3 className="font-bold text-[#2c1810] truncate text-lg mb-1" style={{fontFamily: '"Playfair Display", serif'}}>
                           {selectedRestaurant.name}
                         </h3>
-                        <p className="text-base text-[#8b7355] truncate font-medium">
+                        <p className="text-sm text-[#8b7355] truncate font-medium">
                           {selectedRestaurant.address}
                         </p>
                       </div>
@@ -765,8 +839,8 @@ export default function AddToGuidePage() {
                 )}
 
                 {/* 訪問月 */}
-                <div className="mb-12">
-                  <label className="block text-xl font-bold text-[#2c1810] mb-6" style={{fontFamily: '"Playfair Display", serif'}}>
+                <div className="mb-8">
+                  <label className="block text-xl font-bold text-[#2c1810] mb-3" style={{fontFamily: '"Playfair Display", serif'}}>
                     訪問月 <span className="text-[#A90017]">*</span>
                   </label>
                   <div className="relative">
@@ -775,61 +849,74 @@ export default function AddToGuidePage() {
                       type="month"
                       value={visitedAt}
                       onChange={(e) => setVisitedAt(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-white border border-gray-300 rounded-xl focus:border-[#A90017] focus:ring-2 focus:ring-[#A90017]/20 transition-colors text-[#2c1810] font-medium"
+                      className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:border-[#A90017] focus:ring-2 focus:ring-[#A90017]/20 transition-colors text-[#2c1810] font-medium"
                     />
                   </div>
                 </div>
 
                 {/* メモ */}
-                <div className="mb-12">
-                  <label className="block text-xl font-bold text-[#2c1810] mb-6" style={{fontFamily: '"Playfair Display", serif'}}>
+                <div className="mb-10">
+                  <label className="block text-xl font-bold text-[#2c1810] mb-3" style={{fontFamily: '"Playfair Display", serif'}}>
                     メモ・感想
                   </label>
                   <textarea
                     value={memo}
                     onChange={(e) => setMemo(e.target.value)}
-                    rows={4}
-                    className="w-full py-4 px-4 bg-white border border-gray-300 rounded-xl focus:border-[#A90017] focus:ring-2 focus:ring-[#A90017]/20 resize-none transition-colors text-[#2c1810] font-medium leading-relaxed"
+                    rows={3}
+                    className="w-full py-3 px-3 bg-white border border-gray-300 rounded-xl focus:border-[#A90017] focus:ring-2 focus:ring-[#A90017]/20 resize-none transition-colors text-[#2c1810] font-medium leading-relaxed"
                     placeholder="美味しかった！また行きたい。特におすすめは..."
                   />
                 </div>
 
                 {/* 写真アップロード */}
-                <div className="mb-16">
-                  <label className="block text-xl font-bold text-[#2c1810] mb-6" style={{fontFamily: '"Playfair Display", serif'}}>
+                <div className="mb-10">
+                  <label className="block text-xl font-bold text-[#2c1810] mb-3" style={{fontFamily: '"Playfair Display", serif'}}>
                     写真（任意）
                   </label>
-                  {/* プレビュー */}
-                  {selectedPhotoPreview && (
-                    <div className="w-full aspect-[16/9] max-h-[320px] sm:max-h-[360px] bg-white rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center relative mb-4">
-                      <img src={selectedPhotoPreview} alt="preview" className="block w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => { setSelectedPhoto(null); setSelectedPhotoPreview(''); }}
-                        className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-2"
-                        aria-label="画像を削除"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  {/* アップローダー */}
-                  <label className="block w-full p-12 border-2 border-dashed border-[#A90017]/40 rounded-2xl hover:border-[#A90017] hover:bg-gray-50 transition-colors cursor-pointer group">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                    />
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-[#A90017]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Camera className="w-8 h-8 text-[#A90017]" />
+                  {/* プレビュー or アップローダー（選択済みでUIを切替） */}
+                  {selectedPhotoPreview ? (
+                    <>
+                      <div className="flex justify-center mb-3">
+                        <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white rounded-lg border border-gray-200 overflow-hidden relative">
+                          <img
+                            src={selectedPhotoPreview}
+                            alt="preview"
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedPhoto(null); setSelectedPhotoPreview(''); }}
+                            className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1"
+                            aria-label="画像を削除"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-lg text-[#5a4a3a] font-medium">
-                        {selectedPhoto ? selectedPhoto.name : '写真を選択'}
-                      </p>
-                    </div>
-                  </label>
+                      <div className="flex justify-center">
+                        <label className="inline-flex items-center gap-2 px-3 py-2 border border-[#A90017]/30 rounded-lg cursor-pointer text-sm text-[#5a4a3a] hover:bg-gray-50">
+                          <Camera className="w-4 h-4 text-[#A90017]" />
+                          写真を変更
+                          <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <label className="block w-full p-6 sm:p-8 border-2 border-dashed border-[#A90017]/40 rounded-xl hover:border-[#A90017] hover:bg-gray-50 transition-colors cursor-pointer group">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-[#A90017]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Camera className="w-6 h-6 text-[#A90017]" />
+                        </div>
+                        <p className="text-sm text-[#5a4a3a] font-medium">写真を選択</p>
+                      </div>
+                    </label>
+                  )}
                 </div>
 
                 {error && (
@@ -842,7 +929,7 @@ export default function AddToGuidePage() {
                 <button
                   onClick={submitRestaurant}
                   disabled={isLoading || !selectedRestaurant || !selectedGuidebook}
-                  className="w-full py-6 bg-[#A90017] text-white rounded-2xl font-bold text-xl hover:bg-[#940014] disabled:bg-gray-300 transition-colors flex items-center justify-center gap-3"
+                  className="w-full py-4 bg-[#A90017] text-white rounded-2xl font-bold text-xl hover:bg-[#940014] disabled:bg-gray-300 transition-colors flex items-center justify-center gap-3"
                   style={{
                     fontFamily: '"Playfair Display", serif'
                   }}
