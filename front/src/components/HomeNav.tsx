@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import { House, Users, Plus, Bell } from "lucide-react";
 import { UserIcon } from "./UserIcon";
@@ -143,4 +144,5 @@ export const HomeNav = () => {
       </div>
     </nav>
   );
+
 };
