@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/friends/search', [FriendController::class, 'searchUsers']);
 
     // User endpoints (authenticated)
+    Route::post('/user/update', [UserController::class, 'update']);
+    Route::post('/user/upload-profile-image', [UserController::class, 'uploadProfileImage']);
     Route::post('/user/follow', [FollowController::class, 'follow']);
     Route::post('/user/{id}/followed/status', [FollowController::class, 'followStatus']);
     Route::post('/user/{id}/followed', [FollowController::class, 'getFollowed']);

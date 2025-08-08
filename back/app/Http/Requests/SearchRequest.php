@@ -15,7 +15,18 @@ class SearchRequest extends FormRequest
     {
         return [
             'keyword' => 'required|string|min:2|max:50',
-            'include_history' => 'sometimes|boolean'
+            'include_history' => 'sometimes|boolean',
+            // 追加の検索パラメータ（任意）
+            'lat' => 'sometimes|numeric|between:-90,90',
+            'lng' => 'sometimes|numeric|between:-180,180',
+            // ホットペッパーAPIのrange: 1(300m)/2(500m)/3(1000m)/4(2000m)/5(3000m)
+            'range' => 'sometimes|integer|min:1|max:5',
+            // ページング
+            'start' => 'sometimes|integer|min:1',
+            'count' => 'sometimes|integer|min:1|max:50',
+            // 絞り込み
+            'genre' => 'sometimes|string|max:50',
+            'budget' => 'sometimes|string|max:10'
         ];
     }
 

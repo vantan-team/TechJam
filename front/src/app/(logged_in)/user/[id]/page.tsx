@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, Edit, Users, Star, MapPin, Calendar } from 'lucide-react';
 import type { UserProfile, VisitedHistory, GuideBook } from '@/types/user';
 import { getUserProfile, getVisitedHistory, getGuideBooks, followUser, getUserFollowStatus } from '@/requests/user';
+import EditProfileModal from '@/components/EditProfileModal';
+import Link from 'next/link';
 
 
 export default function UserPage() {
   const params = useParams();
-  const [currentUser] = useAtom(userAtom);
+  const [currentUser, setUser] = useAtom(userAtom);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'guidebooks' | 'activities'>('guidebooks');
@@ -132,8 +134,10 @@ export default function UserPage() {
     }
   };
 
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
   const handleEditProfile = () => {
-    console.log('プロフィール編集ページに遷移');
+    setEditModalOpen(true);
   };
 
   const formatVisitedDate = (visited_at: string) => {
@@ -167,7 +171,8 @@ export default function UserPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <>
+      <div className="min-h-screen bg-gray-50 pb-20">
       {/* ヘッダー */}
       <div className="bg-white shadow-sm">
         <div className="max-w-md mx-auto px-4 py-6">
@@ -191,11 +196,15 @@ export default function UserPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-xs text-gray-600">フォロワー</div>
-                  <div className="text-lg font-bold text-gray-900">{userProfile.followersCount || 0}</div>
+                  <Link href={`./${userProfile.id}/followers`}>
+                    <div className="text-lg font-bold text-gray-900">{userProfile.followersCount || 0}</div>
+                  </Link>
                 </div>
                 <div className="text-center">
                   <div className="text-xs text-gray-600">フォロー中</div>
-                  <div className="text-lg font-bold text-gray-900">{userProfile.followingCount || 0}</div>
+                  <Link href={`./${userProfile.id}/followed`}>
+                    <div className="text-lg font-bold text-gray-900">{userProfile.followingCount || 0}</div>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -421,5 +430,30 @@ export default function UserPage() {
         </div>
       </div>
     </div>
+      <EditProfileModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSubmit={async ({ name, bio, profilePhotoUrl }) => {
+          const { updateUserProfile } = await import('@/requests/user');
+          const res = await updateUserProfile({ name, bio, profilePhotoUrl });
+          if (res.success) {
+            const updated = await getUserProfile(userId);
+            if (updated) setUserProfile({ ...updated, isFollowing: userProfile.isFollowing, guidebooksCount: userProfile.guidebooksCount });
+            // グローバルユーザー情報も更新
+            const { getUserAuthStatus } = await import('@/requests/user');
+            const userStatus = await getUserAuthStatus();
+            if (userStatus?.isLoggedIn && setUser) {
+              setUser(userStatus.user);
+            }
+            setEditModalOpen(false);
+          } else {
+            alert(res.message?.[0] || 'プロフィール更新に失敗しました');
+          }
+        }}
+        initialName={userProfile.name}
+        initialBio={userProfile.bio || ''}
+        initialProfilePhotoUrl={userProfile.profilePhotoUrl || ''}
+      />
+    </>
   );
 }
