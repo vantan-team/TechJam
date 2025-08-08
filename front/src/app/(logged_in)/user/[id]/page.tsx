@@ -330,7 +330,8 @@ export default function UserPage() {
                     {guideBooks.map((book, index) => (
                       <div 
                         key={index} 
-                        className="flex items-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors duration-200"
+                        className="group flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 bg-white hover:shadow-sm border border-neutral-200"
+                        style={{ borderLeft: '3px solid #A90017' }}
                         onClick={() => router.push(`/guidebook/${book.id}`)}
                       >
                         <img
@@ -339,7 +340,7 @@ export default function UserPage() {
                           className="w-12 h-12 rounded-lg object-cover mr-3"
                         />
                         <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 text-sm hover:text-[#A90017] transition-colors">
+                          <h3 className="font-medium text-gray-900 text-sm group-hover:text-[#A90017] transition-colors">
                             {book.title}
                           </h3>
                           <div className="flex items-center text-xs text-gray-600 mt-1">
@@ -356,8 +357,8 @@ export default function UserPage() {
                             <div className="text-xs text-gray-500 mt-1">{book.memo}</div>
                           )}
                         </div>
-                        <div className="text-[#A90017] opacity-60 hover:opacity-100 transition-opacity">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-[#A90017] opacity-60 group-hover:opacity-100 transition-opacity">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
