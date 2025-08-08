@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/friends/{id}/accept', [FriendController::class, 'accept']);
     Route::delete('/friends/{id}', [FriendController::class, 'destroy']);
     Route::post('/friends/search', [FriendController::class, 'searchUsers']);
+    Route::post('/friends/status', [FriendController::class, 'friendStatus']);
 
     // User endpoints (authenticated)
     Route::post('/user/update', [UserController::class, 'update']);

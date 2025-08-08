@@ -6,9 +6,9 @@ import { useAtom } from 'jotai';
 import { userAtom } from '@/atoms/user';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Edit, Users, Star, MapPin, Calendar } from 'lucide-react';
+import { UserPlus, Edit, Users, Star, MapPin, Calendar, Clock, UserCheck } from 'lucide-react';
 import type { UserProfile, VisitedHistory, GuideBook } from '@/types/user';
-import { getUserProfile, getVisitedHistory, getGuideBooks, followUser, getUserFollowStatus } from '@/requests/user';
+import { getUserProfile, getVisitedHistory, getGuideBooks, followUser, getUserFollowStatus, getFriendStatus, sendFriendRequest } from '@/requests/user';
 import EditProfileModal from '@/components/EditProfileModal';
 import Link from 'next/link';
 
@@ -17,6 +17,7 @@ export default function UserPage() {
   const params = useParams();
   const [currentUser, setUser] = useAtom(userAtom);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [friendStatus, setFriendStatus] = useState<"none" | "pending" | "accepted">("none");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'guidebooks' | 'activities'>('guidebooks');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -89,6 +90,12 @@ export default function UserPage() {
             })
         );
         setGuideBooks(books);
+
+        // フレンド状態取得
+        if (!isOwnProfile) {
+          const status = await getFriendStatus(userId);
+          setFriendStatus(status);
+        }
       } catch (error) {
         console.error('ユーザー情報または来店履歴・ガイドブックの取得に失敗しました:', error);
       } finally {
@@ -123,12 +130,11 @@ export default function UserPage() {
 
   const handleFriendRequest = async () => {
     if (!userProfile) return;
-    
     try {
-      setUserProfile({
-        ...userProfile,
-        isFriend: true
-      });
+      const res = await sendFriendRequest(Number(userId));
+      if (res?.success) {
+        setFriendStatus("pending");
+      }
     } catch (error) {
       console.error('フレンド申請に失敗しました:', error);
     }
@@ -245,11 +251,21 @@ export default function UserPage() {
                   <Button 
                     onClick={handleFriendRequest}
                     variant="outline"
-                    disabled={userProfile.isFriend}
+                    disabled={friendStatus === "pending" || friendStatus === "accepted"}
                     className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                   >
-                    <UserPlus size={16} />
-                    {userProfile.isFriend ? "フレンド" : "フレンド追加"}
+                    {friendStatus === "accepted" ? (
+                      <UserCheck size={16} />
+                    ) : friendStatus === "pending" ? (
+                      <Clock size={16} />
+                    ) : (
+                      <UserPlus size={16} />
+                    )}
+                    {friendStatus === "accepted"
+                      ? "フレンド"
+                      : friendStatus === "pending"
+                        ? "申請中"
+                        : "フレンド追加"}
                   </Button>
                 </>
               )}
