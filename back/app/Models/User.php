@@ -80,4 +80,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(GuideBook::class);
     }
+
+    /**
+     * 指定ユーザーをフォローしているか判定
+     * @param User $user
+     * @return bool
+     */
+    public function isFollowingCheck(User $user): bool
+    {
+        return Follower::where('follower_user_id', $this->id)
+            ->where('followed_user_id', $user->id)
+            ->exists();
+    }
 }
