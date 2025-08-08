@@ -4,6 +4,7 @@ import { UserPlus, ChevronRight, ArrowLeft, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getHomeGuidebooks, type Guidebook } from '@/requests/home';
+import Link from 'next/link';
 
 // シンプルなマップ表示
 const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
@@ -217,7 +218,7 @@ export default function FullScreenMapPage() {
                     </button>
                     <div className='ml-2 flex-1'>
                       <h1 className='font-bold text-gray-900'>{selectedGuide.title}</h1>
-                      <p className='text-sm text-gray-600'>by {selectedGuide.author}</p>
+                      <div className='text-sm text-gray-600'>by <Link href={`/user/${selectedGuide.user_id}`} className=' underline'>{selectedGuide.author}</Link></div>
                     </div>
                   </div>
                   <div className='overflow-y-auto flex-1 p-4'>

@@ -26,6 +26,7 @@ class HomeController extends Controller
         $guidebooks = $guidebooks->map(function ($guidebook) use ($followerCounts) {
             return [
                 'id' => $guidebook->id,
+                'user_id' => $guidebook->user_id,
                 'title' => $guidebook->title,
                 'author' => $guidebook->user->name,
                 'followers' => $followerCounts->get($guidebook->user_id, 0),
