@@ -77,13 +77,21 @@ class UserController extends Controller
 
         $currentUser = $request->user();
 
-        // プライバシーチェック: 非公開ユーザーで関係性がない場合
-        if ($user->private && (!$currentUser || !$this->areConnected($currentUser, $user))) {
-            return response()->json([
-                'success' => true,
-                'message' => [''],
-                'books' => []
-            ]);
+        // プライバシーチェック
+        if ($user->private) {
+            // 自分自身のガイドは常に閲覧可
+            if ($currentUser && (int)$currentUser->id === (int)$user->id) {
+                // pass
+            } else {
+                // 未認証、または接続関係がない場合は空配列
+                if (!$currentUser || !$this->areConnected($currentUser, $user)) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => [''],
+                        'books' => []
+                    ]);
+                }
+            }
         }
 
         // ガイドブッククエリ構築
@@ -98,10 +106,15 @@ class UserController extends Controller
             'message' => [''],
             'books' => $guidebooks->map(function ($g) {
                 return [
+                    'id' => $g->id,
                     'title' => $g->title,
                     'geo' => $g->geo,
                     'genre' => $g->genre,
                     'cover_image' => $g->image_url,
+                    'image_url' => $g->image_url,
+                    'restaurant_count' => $g->contents_count,
+                    'contents_count' => $g->contents_count,
+                    'created_at' => $g->created_at->format('Y-m-d'),
                 ];
             })->values(),
         ]);
