@@ -53,8 +53,10 @@ class GuideBookController extends Controller
 
             // 画像アップロード対応（任意）
             if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('uploads/guidebooks', 'public');
-                $data['image_url'] = asset('storage/'.$path);
+                $file = $request->file('image');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/guidebooks'), $fileName);
+                $data['image_url'] = url('uploads/guidebooks/' . $fileName);
             }
 
             $guidebook = GuideBook::create([
