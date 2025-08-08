@@ -12,6 +12,7 @@ class GuideBookContent extends Model
         'star',
         'visited_shop_id',
         'image_url',
+        'comment',
     ];
 
     public function guide()
