@@ -17,6 +17,7 @@
     "@types/leaflet": "^1.9.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.23.12",
     "jotai": "^2.13.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.536.0",

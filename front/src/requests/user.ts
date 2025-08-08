@@ -252,3 +252,28 @@ export async function markNotificationsAsRead(): Promise<any> {
     },
   });
 }
+
+/**
+ * プロフィール更新API
+ */
+export interface UpdateUserProfileRequest {
+  name: string;
+  bio: string;
+  profilePhotoUrl: string;
+}
+export interface UpdateUserProfileResponse {
+  success: boolean;
+  message: string[];
+}
+export async function updateUserProfile(params: UpdateUserProfileRequest): Promise<UpdateUserProfileResponse> {
+  return await fetch.post<UpdateUserProfileRequest, UpdateUserProfileResponse>(
+    "/api/user/update",
+    params,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}

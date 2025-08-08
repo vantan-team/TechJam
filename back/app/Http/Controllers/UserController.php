@@ -63,6 +63,36 @@ class UserController extends Controller
     }
 
     /**
+     * プロフィール更新
+     */
+    public function update(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => ['認証ユーザーが見つかりません'],
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+            'bio' => 'nullable|string|max:300',
+            'profilePhotoUrl' => 'nullable|string|max:255',
+        ]);
+
+        $user->name = $validated['name'];
+        $user->introduction = $validated['bio'] ?? '';
+        $user->profile_photo_url = $validated['profilePhotoUrl'] ?? '';
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => ['プロフィールを更新しました'],
+        ]);
+    }
+
+    /**
      * ユーザーのガイドブック一覧を取得
      */
     public function guidebooks(Request $request, $id): JsonResponse
@@ -133,4 +163,32 @@ class UserController extends Controller
         return $isFriend || $isFollowing;
     }
 
+    /**
+     * プロフィール画像アップロード
+     */
+    public function uploadProfileImage(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => ['認証ユーザーが見つかりません'],
+            ], 401);
+        }
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:4096',
+        ]);
+
+        $file = $request->file('image');
+        $fileName = time() . '_' . $file->getClientOriginalName();
+        $file->move(public_path('uploads/profiles'), $fileName);
+        $url = '/uploads/profiles/' . $fileName;
+
+        return response()->json([
+            'success' => true,
+            'url' => $url,
+            'message' => ['画像をアップロードしました'],
+        ]);
+    }
 }
