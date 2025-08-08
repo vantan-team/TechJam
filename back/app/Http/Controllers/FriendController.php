@@ -60,6 +60,44 @@ class FriendController extends Controller
     }
 
     /**
+     * 指定ユーザーとのフレンド状態を取得
+     */
+    public function friendStatus(Request $request): JsonResponse
+    {
+        $currentUser = $request->user();
+        $userId = $request->user_id;
+
+        if ($currentUser->id == $userId) {
+            return response()->json([
+                'success' => true,
+                'friend_status' => 'self',
+                'message' => ['自分自身です'],
+            ]);
+        }
+
+        $friendRelation = \App\Models\Friend::where(function ($q) use ($currentUser, $userId) {
+                $q->where('user_id', $currentUser->id)
+                  ->where('friend_user_id', $userId);
+            })
+            ->orWhere(function ($q) use ($currentUser, $userId) {
+                $q->where('user_id', $userId)
+                  ->where('friend_user_id', $currentUser->id);
+            })
+            ->first();
+
+        $friendStatus = 'none'; // none, pending, accepted
+        if ($friendRelation) {
+            $friendStatus = $friendRelation->status;
+        }
+
+        return response()->json([
+            'success' => true,
+            'friend_status' => $friendStatus,
+            'message' => ['フレンド状態を取得しました'],
+        ]);
+    }
+
+    /**
      * 指定ユーザーへ友達リクエストを送信
      */
     public function store(Request $request): JsonResponse

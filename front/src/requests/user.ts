@@ -177,6 +177,26 @@ export async function sendFriendRequest(userId: number): Promise<any> {
   );
 }
 
+/**
+ * フレンド状態取得API
+ * @param userId 相手ユーザーID
+ * @returns { friend_status: "none" | "pending" | "accepted" }
+ */
+export async function getFriendStatus(userId: number | string): Promise<"none" | "pending" | "accepted"> {
+  const res = await fetch.post<{ user_id: number | string }, { friend_status: "none" | "pending" | "accepted" | "self" }>(
+    `/api/friends/status`,
+    { user_id: userId },
+    {
+      headers: {
+        ...authHeader(),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  if (!res || res.friend_status === "self") return "none";
+  return res.friend_status;
+}
+
 export async function acceptFriendRequest(requestId: number): Promise<any> {
   return await fetch.post<{}, any>(`/api/friends/${requestId}/accept`, {}, {
     headers: {
