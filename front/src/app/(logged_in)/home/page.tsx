@@ -3,7 +3,7 @@
 import { UserPlus, ChevronRight, ArrowLeft, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
-import { getHomeGuidebooks, type Guidebook } from '@/requests/home';
+import { getHomeGuidebooks, type Guidebook, getRestaurantDetail } from '@/requests/home';
 import Link from 'next/link';
 
 // シンプルなマップ表示
@@ -120,6 +120,32 @@ export default function FullScreenMapPage() {
     setTimeout(() => {
       setSelectedRestaurantId(restaurant.id);
     }, 50);
+  };
+
+  // 店舗詳細オーバーレイ用の状態
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailData, setDetailData] = useState<any>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // マーカーの「ページの詳細を確認」ボタン押下時
+  const handleDetailClick = async (marker: any) => {
+    if (!marker.id) return;
+    setLoadingDetail(true);
+    setDetailOpen(true);
+    try {
+      const hotpepperId = marker.hotpepper_id.toString();
+      const shop = await getRestaurantDetail(hotpepperId);
+      setDetailData(shop);
+    } catch (e) {
+      setDetailData({ error: "詳細情報の取得に失敗しました。" });
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setDetailOpen(false);
+    setDetailData(null);
   };
 
   // ローディング状態とエラー状態の表示
@@ -267,7 +293,132 @@ export default function FullScreenMapPage() {
               markers={selectedMarkers} 
               selectedMarkerId={selectedRestaurantId}
               showOnlySelected={false}
+              onDetailClick={handleDetailClick}
             />
+        </div>
+        {/* 店舗詳細オーバーレイ */}
+          <div
+              className={`fixed top-0 right-0 w-full max-w-[420px] h-full bg-white shadow-2xl transition-transform duration-300 ease-in-out z-99 ${
+                detailOpen ? 'translate-x-0' : 'translate-x-full'
+              }`}
+              style={{
+                transform: detailOpen ? 'translateX(0)' : 'translateX(100%)',
+                boxShadow: '-2px 0 8px rgba(0,0,0,0.15)',
+                overflowY: 'auto',
+              }}
+            >
+              <button
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  left: 16,
+                  background: "#eee",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
+                  fontSize: 20,
+                  cursor: "pointer",
+                  zIndex: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+                onClick={handleCloseDetail}
+                aria-label="戻る"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              {/* カバー画像 */}
+              {detailData && !detailData.error && detailData.image_url && (
+                <div style={{
+                  width: "100%",
+                  aspectRatio: "16/9",
+                  position: "relative",
+                  overflow: "hidden",
+                  marginBottom: 0,
+                }}>
+                  <img
+                    src={detailData.image_url}
+                    alt={detailData.name || ""}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </div>
+              )}
+              <div style={{ padding: "32px 24px 24px 24px" }}>
+                {loadingDetail ? (
+                  <div>読み込み中...</div>
+                ) : detailData && !detailData.error ? (
+                  <div>
+                    {detailData.name && (
+                      <h2 className='mb-[4px] font-bold text-lg'>{detailData.name}</h2>
+                    )}
+                    {/* サブ画像（HotPepper画像） */}
+                    {detailData.photo && detailData.photo.pc && detailData.photo.pc.l && (
+                      <img
+                        src={detailData.photo.pc.l}
+                        alt={detailData.name}
+                        style={{ width: "100%", borderRadius: 8, marginBottom: 16 }}
+                      />
+                    )}
+                    {detailData.address && (
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>住所:</strong> {detailData.address}
+                      </div>
+                    )}
+                    {detailData.genre?.name && (
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>ジャンル:</strong> {detailData.genre.name}
+                      </div>
+                    )}
+                    {detailData.open && (
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>営業時間:</strong> {detailData.open}
+                      </div>
+                    )}
+                    {detailData.close && (
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>定休日:</strong> {detailData.close}
+                      </div>
+                    )}
+                    {detailData.access && (
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>アクセス:</strong> {detailData.access}
+                      </div>
+                    )}
+                    {detailData.tel && (
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>電話番号:</strong> {detailData.tel}
+                      </div>
+                    )}
+                    {detailData.hotpepper_id && (
+                      <a
+                        href={`https://www.hotpepper.jp/str${detailData.hotpepper_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "inline-block",
+                          marginTop: 16,
+                          padding: "8px 16px",
+                          background: "#ff9800",
+                          color: "#fff",
+                          borderRadius: 4,
+                          textDecoration: "none",
+                        }}
+                      >
+                        ホットペッパーでさらに詳しく見る
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div>{detailData?.error || "詳細情報がありません。"}</div>
+                )}
+              </div>
         </div>
     </>
   );

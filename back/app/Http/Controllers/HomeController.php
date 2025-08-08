@@ -36,6 +36,7 @@ class HomeController extends Controller
                     $shop = $content->shop;
                     return [
                         'id' => $shop->id,
+                        'hotpepper_id' => $shop->hotpepper_id,
                         'position' => $this->getPositionFromAddress($shop->address, $shop->hotpepper_id),
                         'title' => $shop->shop_name,
                         'popup' => $this->generatePopupContent($shop),
