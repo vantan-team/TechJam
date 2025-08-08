@@ -86,6 +86,7 @@ export async function getUserActivities(userId: string): Promise<Activity[]> {
   });
 }
 
+// 統合版 getUserProfile
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   return await fetch.get<UserProfile>(`/api/user/${userId}/profile`, {
     headers: { ...authHeader() },
@@ -161,3 +162,4 @@ export async function markNotificationsAsRead(): Promise<any> {
     },
   });
 }
+
