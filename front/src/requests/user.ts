@@ -68,35 +68,35 @@ export interface UnreadCountResponse {
 const getToken = () =>
   typeof window !== "undefined" ? window.localStorage.getItem("access_token") || "" : "";
 
-const authHeader = () => {
+const authHeader = (): HeadersInit | undefined => {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
 };
 
 // ====== 認証・ユーザ ======
 export async function getUserAuthStatus(): Promise<AuthStatus | null> {
   return await fetch.post<null, AuthStatus | null>(`/api/auth/status`, null, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
 export async function getUserActivities(userId: string): Promise<Activity[]> {
   return await fetch.get<Activity[]>(`/api/user/${userId}/activities`, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
 // 統合版 getUserProfile
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   return await fetch.get<UserProfile>(`/api/user/${userId}/profile`, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
 // ====== フレンド ======
 export async function getFriends(): Promise<FriendsResponse | null> {
   return await fetch.get<FriendsResponse | null>(`/api/friends`, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
@@ -106,7 +106,7 @@ export async function searchUsers(query: string): Promise<SearchUsersResponse | 
     { query },
     {
       headers: {
-        ...authHeader(),
+        ...(authHeader() ?? {}),
         "Content-Type": "application/json",
       },
     }
@@ -137,27 +137,27 @@ export async function acceptFriendRequest(requestId: number): Promise<any> {
 
 export async function deleteFriend(friendId: number): Promise<any> {
   return await fetch.destroy(`/api/friends/${friendId}`, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
 // ====== 通知 ======
 export async function getNotifications(): Promise<NotificationsResponse | null> {
   return await fetch.get<NotificationsResponse | null>(`/api/notifications`, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
 export async function getUnreadCount(): Promise<UnreadCountResponse | null> {
   return await fetch.get<UnreadCountResponse | null>(`/api/notifications/unread-count`, {
-    headers: { ...authHeader() },
+    headers: authHeader(),
   });
 }
 
 export async function markNotificationsAsRead(): Promise<any> {
   return await fetch.post<{}, any>(`/api/notifications/mark-as-read`, {}, {
     headers: {
-      ...authHeader(),
+      ...(authHeader() ?? {}),
       "Content-Type": "application/json",
     },
   });
