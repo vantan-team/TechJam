@@ -21,7 +21,7 @@ const Followered = () => {
         if (response?.success) {
           setFollowers(response.followers);
         } else {
-          const errorMessage = response?.message || "フォロワーリストの取得に失敗しました";
+          const errorMessage:any = response?.message || "フォロワーリストの取得に失敗しました";
           setError(errorMessage);
         }
       } catch (error) {
