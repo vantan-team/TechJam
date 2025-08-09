@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, MapPin, Calendar, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Calendar, User, Star, Utensils } from "lucide-react";
 import { Playfair_Display, Noto_Serif_JP } from "next/font/google";
 
 // フォントはモジュールスコープで呼び出す必要がある
-const playfair = Playfair_Display({ subsets: ["latin"], weight: ["600", "700", "800"] });
-const notoSerif = Noto_Serif_JP({ subsets: ["latin"], weight: ["400", "600", "700"] });
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700", "800"] });
+const notoSerif = Noto_Serif_JP({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 type Shop = {
     id: number;
@@ -48,8 +48,7 @@ export default function GuidebookFlipPage() {
   const params = useParams();
   const guidebookId = params?.id as string;
 
-  const BRAND = "#A90017" as const; // 深い赤（アクセント）
-  const PAPER = "#FFF9F2" as const; // クリーム色の紙（やや温かみ）
+  const BRAND = "#A90017" as const; // ブランドカラー（アクセントのみ）
 
   const [loading, setLoading] = useState(true);
   const [guidebook, setGuidebook] = useState<Guidebook | null>(null);
@@ -97,6 +96,15 @@ export default function GuidebookFlipPage() {
       2: contents.filter((c) => c.star === 2),
       1: contents.filter((c) => c.star === 1),
     } as Record<1 | 2 | 3, Content[]>;
+  }, [contents]);
+  // 目次用: 星の高い順→作成日の新しい順でフラット表示
+  const sortedContents = useMemo(() => {
+    return [...contents].sort((a, b) => {
+      if (b.star !== a.star) return b.star - a.star;
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return tb - ta;
+    });
   }, [contents]);
 
   const pages = useMemo<Page[]>(() => {
@@ -218,110 +226,104 @@ export default function GuidebookFlipPage() {
     switch (page.type) {
       case "cover":
         return (
-          <div className="h-full w-full bg-white flex flex-col">
-            <div className="px-6 pt-9 pb-6 flex-1 flex flex-col justify-center">
-              <h2 className={`${playfair.className} text-[22px] tracking-[.08em] text-center text-[#1A1A1A]`}>
-                  {guidebook?.title}
+          <div className="h-full w-full bg-white p-6 flex flex-col justify-center">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                {guidebook?.title}
               </h2>
-              <div className="mx-auto mt-3 h-0.5 w-18" style={{ backgroundColor: BRAND }} />
-              <div className="mt-3 flex items-center justify-center gap-2 text-neutral-600">
+              <div className="flex items-center justify-center gap-2 text-gray-600 mb-4">
                 <User className="h-4 w-4" />
-                <span className={`${notoSerif.className} text-sm`}>{guidebook?.author?.name}</span>
+                <span className="text-sm">{guidebook?.author?.name}</span>
               </div>
+              <div className="inline-flex items-center gap-4 bg-gray-50 rounded-lg px-4 py-2">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-[#A90017]">{contents.length}</div>
+                  <div className="text-xs text-gray-600">レストラン</div>
                 </div>
-            <div className="px-6 py-4 flex items-center justify-between text-[12px] text-neutral-600">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                    {guidebook?.created_at}
+                <div className="w-px h-8 bg-gray-300" />
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    {[3, 2, 1].map(star => grouped[star as 1 | 2 | 3].length > 0 && (
+                      <div key={star} className="flex items-center gap-0.5">
+                        {Array.from({ length: star }, (_, i) => (
+                          <Star key={i} className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-xs text-gray-600">評価</div>
+                </div>
               </div>
-              <div className={`${playfair.className}`}>Guide</div>
             </div>
-                </div>
+            <div className="text-center text-sm text-gray-600">
+              <div className="flex items-center justify-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>{formatYmd(guidebook?.created_at)}</span>
+              </div>
+            </div>
+          </div>
         );
       case "toc":
-        
-
         return (
-          <div className={`${notoSerif.className} h-full w-full p-6 bg-white`} style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 64px)" }}>
-            {/* ヘッダー（左寄せ・ミニマル） */}
-            <div className="mb-6">
-              <div className="text-[11px] tracking-wide text-neutral-400">目次</div>
-              <h1 className={`${notoSerif.className} mt-1 text-[21px] font-semibold text-[#2c1810]`}>
-                {guidebook?.title}
-              </h1>
-              <div className="mt-2 text-[12px] text-[#8b7355] flex items-center gap-2">
-                <User className="h-3 w-3" />
-                <span>{guidebook?.author?.name}</span>
-                <span className="text-neutral-300">・</span>
-                <Calendar className="h-3 w-3" />
-                <span>{formatYmd(guidebook?.created_at)}</span>
-                <span className="text-neutral-300">・</span>
-                <span>{contents.length}軒</span>
+          <div className="h-full w-full bg-white p-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 64px)" }}>
+            {/* ヘッダー */}
+            <div className="mb-4">
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">{guidebook?.title}</h1>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1"><User className="h-4 w-4" /><span>{guidebook?.author?.name}</span></div>
+                <div className="flex items-center gap-1"><Calendar className="h-4 w-4" /><span>{formatYmd(guidebook?.created_at)}</span></div>
+                <span className="font-semibold text-[#A90017]">{contents.length}軒</span>
               </div>
-              <div className="mt-3 h-px w-12 bg-neutral-200" />
             </div>
-            
-            <div className="space-y-8">
-              {contents.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-neutral-400 mb-2">—</div>
-                  <div className="text-sm text-neutral-500 mb-1">まだレストランが追加されていません</div>
-                  <div className="text-xs text-neutral-400">素敵なお店を追加してガイドブックを完成させましょう</div>
-                </div>
-              ) : (
-                ([3, 2, 1] as const).map((star) => {
-                  if (grouped[star].length === 0) return null;
-                    return (
-                      <div key={star}>
-                      <div className="flex items-baseline justify-between mb-4">
-                        <h3 className={`${notoSerif.className} text-[17px] font-semibold text-[#2c1810]`}>
-                          {star === 3 ? '三つ星' : star === 2 ? '二つ星' : '一つ星'}
-                        </h3>
-                        <div className="text-[12px] text-neutral-400">
-                          {grouped[star].length}店舗
-                        </div>
+            {/* 目次（フラットリスト） */}
+            {sortedContents.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <MapPin size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm mb-1">まだレストランが追加されていません</p>
+                <p className="text-xs text-gray-400">素敵なお店を追加してガイドブックを完成させましょう</p>
+              </div>
+            ) : (
+              <div className="space-y-5 md:space-y-6">
+                {sortedContents.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => scrollToPageKey(`r-${c.id}`)}
+                    className="w-full text-left group p-4 md:p-5 rounded-xl bg-white border border-gray-200 hover:shadow-sm transition"
+                    style={{ borderLeft: '3px solid #A90017' }}
+                    aria-label={`${c.shop.name} を開く`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 mb-1">
+                        {Array.from({ length: c.star }, (_, i) => (
+                          <Star key={i} className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                        ))}
                       </div>
-                      
-                      <div className="space-y-4">
-                        {grouped[star].map((c) => {
-                          return (
-                            <div 
-                              key={c.id} 
-                              role="button"
-                              className="cursor-pointer group border-l-2 pl-4 py-3 pr-6 relative transition-all duration-200 hover:pl-5 hover:bg-neutral-50"
-                              style={{ borderColor: BRAND }}
-                              onClick={() => scrollToPageKey(`r-${c.id}`)}
-                            >
-                              <div className="flex items-center justify-start mb-1">
-                                <div className="text-[15px] text-neutral-900 group-hover:text-[#1A1A1A] font-medium transition-colors">
-                                  {c.shop.name}
-                                </div>
-                              </div>
-                              <div className="text-[12px] text-neutral-500 flex items-center gap-2">
-                                <span className="truncate">{c.shop.address}</span>
-                              </div>
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-300 group-hover:text-[#A90017] transition-colors pointer-events-none">
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              </span>
+                      <div className="text-base font-semibold text-gray-900 truncate group-hover:text-[#A90017]">
+                        {c.shop.name}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="text-xs text-gray-600 truncate mt-0.5">
+                        {c.shop.address}
+                      </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       case "star":
         return (
           <div className="h-full w-full p-6 flex items-center justify-center">
             <div className="text-center">
-              <div className={`${playfair.className} text-[22px] tracking-[.14em] text-[#1A1A1A] mb-1`}>
+              <div className="flex items-center justify-center gap-1 mb-3">
+                {Array.from({ length: page.star! }).map((_, i) => (
+                  <Star key={i} className="w-6 h-6 fill-yellow-500 text-yellow-500" />
+                ))}
+              </div>
+              <div className="text-xl font-bold text-gray-900 mb-1">
                 {page.star === 3 ? "三つ星" : page.star === 2 ? "二つ星" : "一つ星"}
               </div>
-              <div className="text-[12px] text-neutral-600">{grouped[page.star!].length} 件</div>
+              <div className="text-sm text-gray-600">{grouped[page.star!].length} 件</div>
             </div>
           </div>
         );
@@ -329,85 +331,80 @@ export default function GuidebookFlipPage() {
         const restaurantData = page.data!;
         console.log('Restaurant Data:', restaurantData);
         console.log('Restaurant Image URL:', restaurantData.image_url);
-          
-
         
         return (
           <div className="h-full w-full flex flex-col bg-white">
             {/* 上段 画像エリア */}
             <div className="relative w-full" style={{ height: "42%" }}>
-              {/* レストラン固有の画像または代替画像 */}
-               {restaurantData.image_url ? (
+              {restaurantData.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={restaurantData.image_url} alt={restaurantData.shop.name} className="absolute inset-0 h-full w-full object-cover" />
               ) : guidebook?.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={guidebook.image_url} alt={restaurantData.shop.name} className="absolute inset-0 h-full w-full object-cover opacity-80" />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-100">
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                   <div className="text-center">
-                    <div className={`${playfair.className} text-2xl tracking-[.2em] mb-2 text-neutral-600`}>
-                      {restaurantData.star === 3 ? '★★★' : restaurantData.star === 2 ? '★★' : '★'}
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                      {Array.from({ length: restaurantData.star }, (_, i) => (
+                        <Star key={i} className="w-6 h-6 fill-yellow-500 text-yellow-500" />
+                      ))}
                     </div>
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-sm text-gray-600">
                       {restaurantData.shop.category}
-                      </span>
+                    </span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* 下段 情報エリア */}
-            <div className="flex-1 p-8">
+            <div className="flex-1 p-6 pt-12">
               {/* ヘッダー情報 */}
-              <div className="border-b border-neutral-100 pb-6 mb-6">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: restaurantData.star }, (_, i) => (
-                        <span key={i} className="text-yellow-400 text-lg">★</span>
-                      ))}
-                      </div>
-                    <div className="text-[11px] text-neutral-400">
-                      {formatYmd(restaurantData.created_at)}
-                    </div>
+              <div className="border-b border-gray-100 pb-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: restaurantData.star }, (_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                    ))}
                   </div>
-                  <h2 className={`${playfair.className} text-[22px] tracking-[.02em] text-[#1A1A1A] font-bold leading-tight`}>
-                    {restaurantData.shop.name}
-                  </h2>
+                  <div className="text-xs text-gray-500">
+                    {formatYmd(restaurantData.created_at)}
+                  </div>
                 </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">
+                  {restaurantData.shop.name}
+                </h2>
                 
-                <div className="flex items-center gap-4 text-[12px] text-neutral-600 mb-3">
-                  <span className="inline-flex items-center gap-1.5 flex-1 min-w-0">
-                    <MapPin className="h-3 w-3 flex-shrink-0" style={{ color: BRAND }} />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="h-4 w-4 flex-shrink-0 text-[#A90017]" />
                     <span>{restaurantData.shop.address}</span>
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-4 text-[11px] text-neutral-600">
-                  <span 
-                    className="px-3 py-1 rounded-full text-[10px] font-medium text-white whitespace-nowrap"
-                    style={{ backgroundColor: BRAND }}
-                  >
-                    {restaurantData.shop.category}
-                  </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white bg-[#A90017]">
+                      {restaurantData.shop.category}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* コメント */}
-              {restaurantData.comment ? (
-                <div>
-                  <div className="text-[11px] mb-2 text-neutral-500">メモ</div>
-                  <p className={`${notoSerif.className} text-[14px] leading-relaxed text-neutral-800`}>
-                    {restaurantData.comment}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-neutral-400">
-                  <div className="text-neutral-300 mb-2">—</div>
-                  <p className="text-[11px]">メモはまだありません</p>
-                </div>
-              )}
+              <div className="min-h-[120px] flex flex-col justify-center">
+                {restaurantData.comment ? (
+                  <div>
+                    <p className="text-sm leading-relaxed text-gray-800">
+                      {restaurantData.comment}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-gray-400 mb-2">—</div>
+                    <p className="text-sm">メモはまだありません</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -416,25 +413,35 @@ export default function GuidebookFlipPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fff9f7]">
-        <div className="text-neutral-600">読み込み中...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gray-200 rounded-full animate-spin border-t-[#A90017] mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">ガイドブックを読み込んでいます...</p>
+        </div>
       </div>
     );
   }
 
   if (!guidebook) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: PAPER }}>
-        <div className="text-center">
-          <p className="mb-4 text-neutral-700">ガイドブックが見つかりませんでした</p>
-          <button onClick={() => router.back()} className="px-4 py-2 rounded-md text-white" style={{ backgroundColor: BRAND }}>戻る</button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="text-6xl mb-4">📖</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">ガイドブックが見つかりませんでした</h3>
+          <p className="text-gray-600 mb-4">指定されたガイドブックは存在しないか、削除されています。</p>
+          <button 
+            onClick={() => router.back()} 
+            className="px-4 py-2 bg-[#A90017] hover:bg-[#940014] text-white rounded-md font-medium transition-colors"
+          >
+            戻る
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`${notoSerif.className} min-h-screen`} style={{ backgroundColor: PAPER }}>
+    <div className="min-h-screen bg-gray-50">
       {/* 余白をなくし、紙面が画面いっぱいになるように */}
       <main className="px-0 py-0">
         <div className="relative">
@@ -456,25 +463,24 @@ export default function GuidebookFlipPage() {
           {/* フローティング戻るボタン（TOCと詳細でUI切替） */}
           {/* 上部オーバーレイ（max-wに揃えて配置） */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-40">
-            <div className="mx-auto max-w-[720px] px-6" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}>
+            <div className="mx-auto max-w-[720px] px-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
               {isTOC ? (
                 <button
                   aria-label="プロフィールへ"
                   onClick={goToProfile}
-                  className="pointer-events-auto inline-flex items-center gap-2 p-0 text-[#2c1810]"
+                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-white"
                 >
-                  <ChevronLeft className="h-5 w-5" style={{ color: BRAND }} />
-                  <span className={`${notoSerif.className} text-[12px]`}>プロフィールに戻る</span>
+                  <ChevronLeft className="h-4 w-4" style={{ color: BRAND }} />
+                  <span className="font-medium">プロフィールへ</span>
                 </button>
               ) : (
                 <button
                   aria-label="目次へ"
                   onClick={() => scrollToIndex(0)}
-                  className="pointer-events-auto p-0"
+                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-white"
                 >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 border border-neutral-200 shadow-sm backdrop-blur-sm aspect-square">
-                    <ChevronLeft className="h-5 w-5" style={{ color: BRAND }} />
-                  </span>
+                  <ChevronLeft className="h-4 w-4" style={{ color: BRAND }} />
+                  <span className="font-medium">目次</span>
                 </button>
               )}
             </div>
