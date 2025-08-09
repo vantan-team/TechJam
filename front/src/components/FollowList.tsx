@@ -10,6 +10,7 @@ import {
   getUserFollowStatus,
   type FollowUser,
 } from "@/requests/user";
+import { useRouter } from "next/navigation";
 
 interface FollowListProps {
   users: FollowUser[];
@@ -29,6 +30,7 @@ const FollowList: React.FC<FollowListProps> = ({
     [key: string]: boolean;
   }>({});
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
   // 各ユーザーのフォロー状態を取得
   useEffect(() => {
@@ -57,6 +59,12 @@ const FollowList: React.FC<FollowListProps> = ({
       loadFollowingStatus();
     }
   }, [users, currentUser]);
+
+  const handleUserClick = (user: any) => {
+    if (user.id) {
+      router.push(`/user/${user.id}`);
+    }
+  };
 
   const handleFollowToggle = async (user: FollowUser) => {
     if (processingIds.has(user.id) || currentUser?.id?.toString() === user.id)
@@ -125,6 +133,7 @@ const FollowList: React.FC<FollowListProps> = ({
             <div
               key={user.id}
               className="flex items-center p-4 bg-white/60 hover:bg-white/90 rounded-lg border border-gray-200/50 shadow-sm transition-all duration-200 transform hover:scale-[1.01] hover:shadow-md"
+              onClick={() => handleUserClick(user)}
             >
               {/* アバター */}
               <div className="flex-shrink-0 mr-4">
