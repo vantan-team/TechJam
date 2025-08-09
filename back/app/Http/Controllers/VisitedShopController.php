@@ -104,13 +104,16 @@ class VisitedShopController extends Controller
 
             // 訪問履歴を取得（店舗情報も含める）
             $visitedShops = VisitedShop::where('user_id', $id)
-                ->with('shop:id,shop_name,hotpepper_id')
+                ->with('shop:id,shop_name,hotpepper_id,address,category')
                 ->orderBy('visited_at', 'desc')
                 ->get();
 
             $visitedHistory = $visitedShops->map(function ($visit) {
                 return [
+                    'id' => $visit->shop->id,
                     'name' => $visit->shop->shop_name,
+                    'address' => $visit->shop->address,
+                    'category' => $visit->shop->category,
                     'visited_at' => $visit->visited_at->format('Y-m-d'),
                     'memo' => $visit->memo ?? '',
                     'hotpepper_id' => $visit->shop->hotpepper_id ? (int)$visit->shop->hotpepper_id : null,
