@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, MapPin, Calendar, User, Star, Utensils } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Calendar, User, Star, Utensils, Map } from "lucide-react";
 import { Playfair_Display, Noto_Serif_JP } from "next/font/google";
 
 // フォントはモジュールスコープで呼び出す必要がある
@@ -201,6 +201,20 @@ export default function GuidebookFlipPage() {
     } else {
       router.back();
     }
+  };
+
+  const goToMap = () => {
+    if (!guidebook) return;
+    
+    // ガイドブック情報をURLパラメータとして渡してホームページに遷移
+    const guidebookParams = new URLSearchParams({
+      guidebook_id: guidebook.id.toString(),
+      guidebook_title: guidebook.title,
+      guidebook_geo: guidebook.geo || '',
+      guidebook_author: guidebook.author?.name || '',
+      from_guidebook: 'true'
+    });
+    router.push(`/home?${guidebookParams.toString()}`);
   };
 
   // 表示用 日付フォーマッタ（APIの "YYYY-MM-DD" / "YYYY-MM-DD hh:mm:ss" などを想定）
@@ -463,7 +477,8 @@ export default function GuidebookFlipPage() {
           {/* フローティング戻るボタン（TOCと詳細でUI切替） */}
           {/* 上部オーバーレイ（max-wに揃えて配置） */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-40">
-            <div className="mx-auto max-w-[720px] px-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
+            <div className="mx-auto max-w-[720px] px-4 flex justify-between items-start" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
+              {/* 左側: 戻るボタン */}
               {isTOC ? (
                 <button
                   aria-label="プロフィールへ"
@@ -481,6 +496,18 @@ export default function GuidebookFlipPage() {
                 >
                   <ChevronLeft className="h-4 w-4" style={{ color: BRAND }} />
                   <span className="font-medium">目次</span>
+                </button>
+              )}
+
+              {/* 右側: マップ表示ボタン（目次ページのみ表示） */}
+              {isTOC && (
+                <button
+                  aria-label="マップで表示"
+                  onClick={goToMap}
+                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-3 py-1.5 text-sm text-gray-700 shadow-sm hover:bg-white hover:border-[#A90017] hover:text-[#A90017] transition-colors"
+                >
+                  <Map className="h-4 w-4" style={{ color: BRAND }} />
+                  <span className="font-medium">マップ表示</span>
                 </button>
               )}
             </div>
