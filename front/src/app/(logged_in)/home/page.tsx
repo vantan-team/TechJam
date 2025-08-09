@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { getHomeGuidebooks, type Guidebook, getRestaurantDetail } from '@/requests/home';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { addVisitedShop } from '@/requests/user';
+import { addVisitedHistory } from '@/requests/user';
 
 // シンプルなマップ表示
 const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
@@ -172,6 +172,7 @@ export default function FullScreenMapPage() {
   const [visitedDate, setVisitedDate] = useState(new Date().toISOString().split('T')[0]);
   const [visitedMemo, setVisitedMemo] = useState('');
   const [addingVisited, setAddingVisited] = useState(false);
+  const [addedVisited, setAddedVisited] = useState(false); // 追加完了状態
 
   // マーカーの「店舗の詳細」ボタン押下時
   const handleDetailClick = async (marker: any) => {
@@ -211,51 +212,31 @@ export default function FullScreenMapPage() {
   // 行った店に追加API呼び出し（Shop作成 + VisitedShop作成）
   const handleAddToVisited = async () => {
     if (!detailData) return;
-
     setAddingVisited(true);
+    setAddedVisited(false);
     try {
-      // まず店舗をShopテーブルに登録
-      const shopResponse = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/shops`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          hotpepper_id: detailData.hotpepper_id || detailData.id,
-          shop_name: detailData.name,
-          address: detailData.address,
-          category: detailData.genre?.name || 'その他',
-          image_url: detailData.image_url || detailData.photo?.pc?.l || null
-        })
-      });
-
-      if (!shopResponse.ok) {
-        const error = await shopResponse.json();
-        throw new Error(error.message || 'Shop登録に失敗しました');
-      }
-
-      const shopData = await shopResponse.json();
-      const shopId = shopData.shop.id;
-
+      const shopId = detailData.hotpepper_id;
       // 次に訪問履歴を作成
-      const visitedResponse = await addVisitedShop({
-        shop_id: shopId,
+      const visitedResponse = await addVisitedHistory({
+        hotpepper_id: shopId,
         visited_at: visitedDate,
         memo: visitedMemo
       });
-
       if (visitedResponse.success) {
-        alert('行った店リストに追加されました！');
-        handleCloseAddToVisited();
+        setAddedVisited(true);
+        setAddingVisited(false);
+        setTimeout(() => {
+          setAddedVisited(false);
+          handleCloseAddToVisited();
+        }, 1000);
       } else {
+        setAddingVisited(false);
         alert(visitedResponse.message || '訪問履歴の追加に失敗しました');
       }
     } catch (error) {
+      setAddingVisited(false);
       console.error('Error adding visited shop:', error);
       alert('エラーが発生しました: ' + (error instanceof Error ? error.message : '不明なエラー'));
-    } finally {
-      setAddingVisited(false);
     }
   };
 
@@ -619,15 +600,25 @@ export default function FullScreenMapPage() {
                 </button>
                 <button
                   onClick={handleAddToVisited}
-                  disabled={addingVisited || !visitedDate}
-                  className="flex-1 py-2 px-4 bg-[#A90017] text-white rounded-lg hover:bg-[#940014] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  disabled={addingVisited || addedVisited || !visitedDate}
+                  className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors
+                    bg-[#A90017] text-white hover:bg-[#940014] disabled:opacity-50`}
                 >
                   {addingVisited ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : addedVisited ? (
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="10" cy="10" r="10" fill="#A90017"/>
+                      <path d="M6 10.5L9 13.5L14 8.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                   ) : (
                     <Plus size={16} />
                   )}
-                  {addingVisited ? '追加中...' : '追加する'}
+                  {addingVisited
+                    ? '追加中...'
+                    : addedVisited
+                      ? '追加完了'
+                      : '追加'}
                 </button>
               </div>
             </div>
