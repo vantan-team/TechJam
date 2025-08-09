@@ -2,6 +2,8 @@
 import * as fetch from "@/utils/fetch";
 import type { AuthStatus, UserProfile, VisitedHistory, GuideBook } from "@/types/user";
 
+const NEXT_PUBLIC_API_ROOT = process.env.NEXT_PUBLIC_API_ROOT;
+
 // ====== 共通型 ======
 export interface User {
   id: number;
@@ -75,7 +77,7 @@ const authHeader = (): HeadersInit | undefined => {
 
 // ====== 認証・ユーザ ======
 export async function getUserAuthStatus(): Promise<AuthStatus | null> {
-  return await fetch.post<null, AuthStatus | null>(`/api/auth/status`, null, {
+  return await fetch.post<null, AuthStatus | null>(`${NEXT_PUBLIC_API_ROOT}/api/auth/status`, null, {
     headers: authHeader(),
   });
 }
@@ -87,7 +89,7 @@ interface VisitedHistoryResponse {
 }
 
 export async function getVisitedHistory(userId: string): Promise<VisitedHistory[]> {
-  const res = await fetch.post<null, VisitedHistoryResponse, null>(`/api/user/${userId}/visited_history`, null, {
+  const res = await fetch.post<null, VisitedHistoryResponse, null>(`${NEXT_PUBLIC_API_ROOT}/api/user/${userId}/visited_history`, null, {
     headers: authHeader(),
   });
   return res?.visited_history ?? [];
@@ -110,7 +112,7 @@ interface GetUserProfileApiResponse {
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  const res = await fetch.post<null, GetUserProfileApiResponse, null>(`/api/user/${userId}`, null, {
+  const res = await fetch.post<null, GetUserProfileApiResponse, null>(`${NEXT_PUBLIC_API_ROOT}/api/user/${userId}`, null, {
     headers: authHeader(),
   });
 
@@ -138,7 +140,7 @@ interface GuideBooksResponse {
 }
 
 export async function getGuideBooks(userId: string): Promise<GuideBook[]> {
-  const res = await fetch.post<null, GuideBooksResponse, null>(`/api/user/${userId}/guide_books`, null, {
+  const res = await fetch.post<null, GuideBooksResponse, null>(`${NEXT_PUBLIC_API_ROOT}/api/user/${userId}/guide_books`, null, {
     headers: authHeader(),
   });
   return res?.books ?? [];
@@ -146,14 +148,14 @@ export async function getGuideBooks(userId: string): Promise<GuideBook[]> {
 
 // ====== フレンド ======
 export async function getFriends(): Promise<FriendsResponse | null> {
-  return await fetch.get<FriendsResponse | null>(`/api/friends`, {
+  return await fetch.get<FriendsResponse | null>(`${NEXT_PUBLIC_API_ROOT}/api/friends`, {
     headers: authHeader(),
   });
 }
 
 export async function searchUsers(query: string): Promise<SearchUsersResponse | null> {
   return await fetch.post<{ query: string }, SearchUsersResponse | null>(
-    `/api/friends/search`,
+    `${NEXT_PUBLIC_API_ROOT}/api/friends/search`,
     { query },
     {
       headers: {
@@ -166,7 +168,7 @@ export async function searchUsers(query: string): Promise<SearchUsersResponse | 
 
 export async function sendFriendRequest(userId: number): Promise<any> {
   return await fetch.post<{ request_user_id: number }, any>(
-    `/api/friends/request`,
+    `${NEXT_PUBLIC_API_ROOT}/api/friends/request`,
     { request_user_id: userId },
     {
       headers: {
@@ -184,7 +186,7 @@ export async function sendFriendRequest(userId: number): Promise<any> {
  */
 export async function getFriendStatus(userId: number | string): Promise<"none" | "pending" | "accepted"> {
   const res = await fetch.post<{ user_id: number | string }, { friend_status: "none" | "pending" | "accepted" | "self" }>(
-    `/api/friends/status`,
+    `${NEXT_PUBLIC_API_ROOT}/api/friends/status`,
     { user_id: userId },
     {
       headers: {
@@ -198,7 +200,7 @@ export async function getFriendStatus(userId: number | string): Promise<"none" |
 }
 
 export async function acceptFriendRequest(requestId: number): Promise<any> {
-  return await fetch.post<{}, any>(`/api/friends/${requestId}/accept`, {}, {
+  return await fetch.post<{}, any>(`${NEXT_PUBLIC_API_ROOT}/api/friends/${requestId}/accept`, {}, {
     headers: {
       ...authHeader(),
       "Content-Type": "application/json",
@@ -207,7 +209,7 @@ export async function acceptFriendRequest(requestId: number): Promise<any> {
 }
 
 export async function deleteFriend(friendId: number): Promise<any> {
-  return await fetch.destroy(`/api/friends/${friendId}`, {
+  return await fetch.destroy(`${NEXT_PUBLIC_API_ROOT}/api/friends/${friendId}`, {
     headers: authHeader(),
   });
 }
@@ -225,7 +227,7 @@ export interface FollowUserResponse {
 }
 export async function followUser(params: FollowUserRequest): Promise<FollowUserResponse> {
   return await fetch.post<FollowUserRequest, FollowUserResponse>(
-    "/api/user/follow",
+    `${NEXT_PUBLIC_API_ROOT}/api/user/follow`,
     params,
     {
       headers: {
@@ -238,7 +240,7 @@ export async function followUser(params: FollowUserRequest): Promise<FollowUserR
 
 // ====== 通知 ======
 export async function getNotifications(): Promise<NotificationsResponse | null> {
-  return await fetch.get<NotificationsResponse | null>(`/api/notifications`, {
+  return await fetch.get<NotificationsResponse | null>(`${NEXT_PUBLIC_API_ROOT}/api/notifications`, {
     headers: authHeader(),
   });
 }
@@ -250,7 +252,7 @@ export interface UserFollowStatusResponse {
 
 export async function getUserFollowStatus(userId: string | number): Promise<boolean> {
   const res = await fetch.post<null, UserFollowStatusResponse, null>(
-    `/api/user/${userId}/followed/status`,
+    `${NEXT_PUBLIC_API_ROOT}/api/user/${userId}/followed/status`,
     null,
     { headers: authHeader() }
   );
@@ -258,13 +260,13 @@ export async function getUserFollowStatus(userId: string | number): Promise<bool
 }
 
 export async function getUnreadCount(): Promise<UnreadCountResponse | null> {
-  return await fetch.get<UnreadCountResponse | null>(`/api/notifications/unread-count`, {
+  return await fetch.get<UnreadCountResponse | null>(`${NEXT_PUBLIC_API_ROOT}/api/notifications/unread-count`, {
     headers: authHeader(),
   });
 }
 
 export async function markNotificationsAsRead(): Promise<any> {
-  return await fetch.post<{}, any>(`/api/notifications/mark-as-read`, {}, {
+  return await fetch.post<{}, any>(`${NEXT_PUBLIC_API_ROOT}/api/notifications/mark-as-read`, {}, {
     headers: {
       ...(authHeader() ?? {}),
       "Content-Type": "application/json",
@@ -297,7 +299,7 @@ export interface FollowedResponse {
 
 export async function getFollowers(userId: string): Promise<FollowersResponse | null> {
   return await fetch.post<null, FollowersResponse | null>(
-    `/api/user/${userId}/followers`,
+    `${NEXT_PUBLIC_API_ROOT}/api/user/${userId}/followers`,
     null,
     {
       headers: {
@@ -310,7 +312,7 @@ export async function getFollowers(userId: string): Promise<FollowersResponse | 
 
 export async function getFollowed(userId: string): Promise<FollowedResponse | null> {
   return await fetch.post<null, FollowedResponse | null>(
-    `/api/user/${userId}/followed`,
+    `${NEXT_PUBLIC_API_ROOT}/api/user/${userId}/followed`,
     null,
     {
       headers: {
@@ -333,7 +335,32 @@ export interface UpdateUserProfileResponse {
 }
 export async function updateUserProfile(params: UpdateUserProfileRequest): Promise<UpdateUserProfileResponse> {
   return await fetch.post<UpdateUserProfileRequest, UpdateUserProfileResponse>(
-    "/api/user/update",
+    `${NEXT_PUBLIC_API_ROOT}/api/user/update`,
+    params,
+    {
+      headers: {
+        ...(authHeader() ?? {}),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+// ====== 来店履歴追加 ======
+export interface AddVisitedHistoryRequest {
+  hotpepper_id: string;
+  visited_at: string;
+  memo?: string;
+}
+
+export interface AddVisitedHistoryResponse {
+  success: boolean;
+  message: string[];
+}
+
+export async function addVisitedHistory(params: AddVisitedHistoryRequest): Promise<AddVisitedHistoryResponse> {
+  return await fetch.post<AddVisitedHistoryRequest, AddVisitedHistoryResponse>(
+    `${NEXT_PUBLIC_API_ROOT}/api/history/add`,
     params,
     {
       headers: {

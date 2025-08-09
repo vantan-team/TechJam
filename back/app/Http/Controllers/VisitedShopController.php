@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\VisitedShop;
 use App\Models\Shop;
 use Carbon\Carbon;
+use App\Http\Controllers\RestaurantController;
 
 class VisitedShopController extends Controller
 {
@@ -18,21 +19,35 @@ class VisitedShopController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'shop_id' => 'required|integer|exists:shops,id',
+            'shop_id' => 'required_without:hotpepper_id|integer|exists:shops,id',
+            'hotpepper_id' => 'required_without:shop_id|string',
             'visited_at' => 'required|date',
             'memo' => 'nullable|string|max:1000'
         ]);
 
         $user = Auth::user();
+        $shopId = $request->shop_id;
 
         try {
+            if ($request->hotpepper_id) {
+                $restaurantController = new RestaurantController();
+                $shopData = $restaurantController->getOrCreateShopFromHotpepper($request->hotpepper_id);
+                if (!$shopData) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => '店舗情報の取得に失敗しました'
+                    ], 404);
+                }
+                $shopId = $shopData['id'];
+            }
+
             // 店舗情報を取得
-            $shop = Shop::findOrFail($request->shop_id);
+            $shop = Shop::findOrFail($shopId);
 
             // 同じ店舗・同じ日付の履歴が既にないかチェック
             $visitedDate = Carbon::parse($request->visited_at)->format('Y-m-d');
             $existingVisit = VisitedShop::where('user_id', $user->id)
-                ->where('shop_id', $request->shop_id)
+                ->where('shop_id', $shopId)
                 ->whereDate('visited_at', $visitedDate)
                 ->first();
 
@@ -46,7 +61,7 @@ class VisitedShopController extends Controller
             // 訪問履歴を作成
             $visitedShop = VisitedShop::create([
                 'user_id' => $user->id,
-                'shop_id' => $request->shop_id,
+                'shop_id' => $shopId,
                 'visited_at' => $request->visited_at,
                 'memo' => $request->memo
             ]);
@@ -116,6 +131,4 @@ class VisitedShopController extends Controller
             ], 500);
         }
     }
-
-
 }
