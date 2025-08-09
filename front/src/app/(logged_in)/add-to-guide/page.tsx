@@ -145,6 +145,36 @@ export default function AddToGuidePage() {
     }
   }, [searchQuery]);
 
+  const [visitedShops, setVisitedShops] = useState<Restaurant[]>([]);
+  const [showAllVisited, setShowAllVisited] = useState(false);
+
+  const loadVisitedShops = async (userId: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/user/${userId}/visited_history`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      if (!res.ok) throw new Error('訪問履歴の取得に失敗しました');
+      const data = await res.json();
+      const shops = (data?.visited_history ?? []).map((v: any) => ({
+        id: v.id.toString(),
+        name: v.name,
+        address: v.address,
+        category: v.category,
+        source: 'history',
+        hotpepper_id: v.hotpepper_id?.toString(),
+      }));
+      setVisitedShops(shops);
+    } catch (error) {
+      console.error('Failed to load visited shops:', error);
+    }
+  };
+
   const loadGuidebooks = async () => {
     try {
       // 1) 認証ユーザー取得
@@ -159,6 +189,9 @@ export default function AddToGuidePage() {
       const statusData = await statusRes.json();
       const userId = statusData?.user?.id;
       if (!userId) throw new Error('ユーザー情報が取得できませんでした');
+
+      // Load visited shops
+      loadVisitedShops(userId);
 
       // 2) 統合APIからユーザーのガイドブック一覧を取得
       const gbRes = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/user/${userId}/guide_books`, {
@@ -689,6 +722,55 @@ export default function AddToGuidePage() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* 訪れた店から選択 */}
+                {visitedShops.length > 0 && (
+                  <div className="mb-16">
+                    <label className="block text-xl font-bold text-[#2c1810] mb-8" style={{fontFamily: '"Playfair Display", serif'}}>
+                      訪れた店から選択
+                    </label>
+                    <div className="space-y-3">
+                      {(showAllVisited ? visitedShops : visitedShops.slice(0, 3)).map((restaurant) => (
+                        <button
+                          key={`visited-${restaurant.id}`}
+                          onClick={() => setSelectedRestaurant(restaurant)}
+                          className={`w-full p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+                            selectedRestaurant?.id === restaurant.id
+                              ? 'border-[#A90017] bg-white shadow-md'
+                              : 'border-gray-200 bg-white hover:border-[#A90017] hover:shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-14 h-14 bg-[#A90017]/5 rounded-xl flex items-center justify-center border border-[#A90017]/20">
+                              <span className="text-xl">🍽️</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-[#2c1810] truncate" style={{fontFamily: '"Playfair Display", serif'}}>
+                                {restaurant.name}
+                              </h3>
+                              <div className="flex items-center gap-1 mt-1">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <p className="text-sm text-[#8b7355] truncate font-medium">
+                                  {restaurant.address}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {visitedShops.length > 3 && (
+                      <div className="mt-4 text-center">
+                        <button
+                          onClick={() => setShowAllVisited(!showAllVisited)}
+                          className="text-sm font-medium text-[#A90017] hover:underline"
+                        >
+                          {showAllVisited ? '一部を隠す' : 'すべて表示'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
