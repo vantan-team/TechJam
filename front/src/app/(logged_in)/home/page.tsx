@@ -1,11 +1,12 @@
 'use client';
 
-import { UserPlus, ChevronRight, ArrowLeft, Star } from 'lucide-react';
+import { UserPlus, ChevronRight, ArrowLeft, Star, Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getHomeGuidebooks, type Guidebook, getRestaurantDetail } from '@/requests/home';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { addVisitedShop } from '@/requests/user';
 
 // シンプルなマップ表示
 const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
@@ -166,7 +167,13 @@ export default function FullScreenMapPage() {
   const [detailData, setDetailData] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // マーカーの「ページの詳細を確認」ボタン押下時
+  // 行った店に追加モーダル用の状態
+  const [addToVisitedOpen, setAddToVisitedOpen] = useState(false);
+  const [visitedDate, setVisitedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [visitedMemo, setVisitedMemo] = useState('');
+  const [addingVisited, setAddingVisited] = useState(false);
+
+  // マーカーの「店舗の詳細」ボタン押下時
   const handleDetailClick = async (marker: any) => {
     if (!marker.id) return;
     setLoadingDetail(true);
@@ -185,6 +192,71 @@ export default function FullScreenMapPage() {
   const handleCloseDetail = () => {
     setDetailOpen(false);
     setDetailData(null);
+  };
+
+  // 行った店に追加モーダルを開く
+  const handleOpenAddToVisited = () => {
+    setAddToVisitedOpen(true);
+    setVisitedDate(new Date().toISOString().split('T')[0]);
+    setVisitedMemo('');
+  };
+
+  // 行った店に追加モーダルを閉じる
+  const handleCloseAddToVisited = () => {
+    setAddToVisitedOpen(false);
+    setVisitedDate(new Date().toISOString().split('T')[0]);
+    setVisitedMemo('');
+  };
+
+  // 行った店に追加API呼び出し（Shop作成 + VisitedShop作成）
+  const handleAddToVisited = async () => {
+    if (!detailData) return;
+
+    setAddingVisited(true);
+    try {
+      // まず店舗をShopテーブルに登録
+      const shopResponse = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/shops`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({
+          hotpepper_id: detailData.hotpepper_id || detailData.id,
+          shop_name: detailData.name,
+          address: detailData.address,
+          category: detailData.genre?.name || 'その他',
+          image_url: detailData.image_url || detailData.photo?.pc?.l || null
+        })
+      });
+
+      if (!shopResponse.ok) {
+        const error = await shopResponse.json();
+        throw new Error(error.message || 'Shop登録に失敗しました');
+      }
+
+      const shopData = await shopResponse.json();
+      const shopId = shopData.shop.id;
+
+      // 次に訪問履歴を作成
+      const visitedResponse = await addVisitedShop({
+        shop_id: shopId,
+        visited_at: visitedDate,
+        memo: visitedMemo
+      });
+
+      if (visitedResponse.success) {
+        alert('行った店リストに追加されました！');
+        handleCloseAddToVisited();
+      } else {
+        alert(visitedResponse.message || '訪問履歴の追加に失敗しました');
+      }
+    } catch (error) {
+      console.error('Error adding visited shop:', error);
+      alert('エラーが発生しました: ' + (error instanceof Error ? error.message : '不明なエラー'));
+    } finally {
+      setAddingVisited(false);
+    }
   };
 
   // ローディング状態とエラー状態の表示
@@ -450,30 +522,117 @@ export default function FullScreenMapPage() {
                         <strong>電話番号:</strong> {detailData.tel}
                       </div>
                     )}
-                    {detailData.hotpepper_id && (
-                      <a
-                        href={`https://www.hotpepper.jp/str${detailData.hotpepper_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 16 }}>
+                      <button
+                        onClick={handleOpenAddToVisited}
                         style={{
-                          display: "inline-block",
-                          marginTop: 16,
                           padding: "8px 16px",
-                          background: "#ff9800",
+                          background: "#A90017",
                           color: "#fff",
+                          border: "none",
                           borderRadius: 4,
-                          textDecoration: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          fontSize: "14px",
+                          fontWeight: "500"
                         }}
                       >
-                        ホットペッパーでさらに詳しく見る
-                      </a>
-                    )}
+                        <Plus size={16} />
+                        行った店に追加
+                      </button>
+                      {detailData.hotpepper_id && (
+                        <a
+                          href={`https://www.hotpepper.jp/str${detailData.hotpepper_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: "inline-block",
+                            padding: "8px 16px",
+                            background: "#ff9800",
+                            color: "#fff",
+                            borderRadius: 4,
+                            textDecoration: "none",
+                          }}
+                        >
+                          ホットペッパーでさらに詳しく見る
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div>{detailData?.error || "詳細情報がありません。"}</div>
                 )}
               </div>
         </div>
+
+        {/* 行った店に追加モーダル */}
+        {addToVisitedOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-[9999] p-4" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}>
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">行った店に追加</h3>
+              
+              {detailData && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{detailData.name}</h4>
+                  {detailData.address && (
+                    <p className="text-sm text-gray-600">{detailData.address}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    訪問日 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={visitedDate}
+                    onChange={(e) => setVisitedDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#A90017]/20 focus:border-[#A90017]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    メモ（任意）
+                  </label>
+                  <textarea
+                    value={visitedMemo}
+                    onChange={(e) => setVisitedMemo(e.target.value)}
+                    rows={3}
+                    placeholder="感想やメモを入力..."
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#A90017]/20 focus:border-[#A90017] resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleCloseAddToVisited}
+                  disabled={addingVisited}
+                  className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleAddToVisited}
+                  disabled={addingVisited || !visitedDate}
+                  className="flex-1 py-2 px-4 bg-[#A90017] text-white rounded-lg hover:bg-[#940014] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {addingVisited ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <Plus size={16} />
+                  )}
+                  {addingVisited ? '追加中...' : '追加する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </>
   );
 }
