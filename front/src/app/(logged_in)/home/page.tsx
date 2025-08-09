@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { getHomeGuidebooks, type Guidebook, getRestaurantDetail } from '@/requests/home';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 // シンプルなマップ表示
 const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
@@ -36,6 +37,8 @@ const SimpleMap = dynamic(() => import('./GoogleMapComponent').catch(() => ({
 });
 
 export default function FullScreenMapPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [selectedMarkers, setSelectedMarkers] = useState<any[]>([]);
   const [selectedGuidebookId, setSelectedGuidebookId] = useState<number | null>(null);
@@ -77,12 +80,46 @@ export default function FullScreenMapPage() {
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
 
-  // 初回読み込み時に全マーカーを設定
+  // 初回読み込み時に全マーカーを設定、またはURLパラメータの処理
   useEffect(() => {
-    if (currentGuidebooks.length > 0 && selectedMarkers.length === 0) {
-      setSelectedMarkers(defaultMarkers);
+    if (currentGuidebooks.length > 0) {
+      // URLパラメータからガイドブック情報を取得
+      const guidebookId = searchParams.get('guidebook_id');
+      const guidebookTitle = searchParams.get('guidebook_title');
+      const guidebookGeo = searchParams.get('guidebook_geo');
+      const fromGuidebook = searchParams.get('from_guidebook');
+
+      if (guidebookId && guidebookTitle && fromGuidebook) {
+        // 特定のガイドブックでフィルタリング
+        const targetGuidebook = currentGuidebooks.find(book => 
+          book.id.toString() === guidebookId || 
+          book.title.includes(guidebookTitle)
+        );
+        
+        if (targetGuidebook) {
+          setSelectedMarkers(targetGuidebook.restaurants);
+          setSelectedGuidebookId(targetGuidebook.id);
+          setSelectedGuide(targetGuidebook);
+          setIsGuideOpen(true);
+        } else {
+          // 該当するガイドブックが見つからない場合は、地域名やタイトルでフィルタリング
+          const filteredGuidebooks = currentGuidebooks.filter(book => 
+            (guidebookGeo && (book.title.includes(guidebookGeo) || book.description?.includes(guidebookGeo))) ||
+            book.title.includes(guidebookTitle)
+          );
+          
+          if (filteredGuidebooks.length > 0) {
+            const combinedMarkers = filteredGuidebooks.flatMap(book => book.restaurants);
+            setSelectedMarkers(combinedMarkers);
+          } else {
+            setSelectedMarkers(defaultMarkers);
+          }
+        }
+      } else if (selectedMarkers.length === 0) {
+        setSelectedMarkers(defaultMarkers);
+      }
     }
-  }, [currentGuidebooks.length]);
+  }, [currentGuidebooks.length, searchParams]);
 
   // ガイドブッククリック処理
   const handleGuidebookClick = (guidebook: any) => {
@@ -94,6 +131,8 @@ export default function FullScreenMapPage() {
   const handleShowAll = () => {
     setSelectedMarkers(defaultMarkers);
     setSelectedGuidebookId(null);
+    // URLパラメータもクリア
+    router.replace('/home');
   };
 
   // ガイド詳細を開く処理
@@ -173,6 +212,21 @@ export default function FullScreenMapPage() {
     );
   }
 
+  // URLパラメータに基づいた表示タイトル
+  const getDisplayTitle = () => {
+    const guidebookTitle = searchParams.get('guidebook_title');
+    const guidebookGeo = searchParams.get('guidebook_geo');
+    const fromGuidebook = searchParams.get('from_guidebook');
+    
+    if (fromGuidebook && guidebookTitle) {
+      return `「${guidebookTitle}」のお店`;
+    }
+    if (guidebookTitle && guidebookGeo) {
+      return `${guidebookGeo}のガイドブック`;
+    }
+    return '周辺の人気なガイドブック';
+  };
+
   return (
     <>
         <div className='fixed from-blue-50 z-40 bottom-[64px] left-0 h-[40%] w-full bg-white/80 backdrop-blur-sm rounded-t-lg flex flex-col overflow-hidden'>
@@ -181,7 +235,7 @@ export default function FullScreenMapPage() {
               isGuideOpen ? '-translate-x-full' : 'translate-x-0'
             }`}>
               <div className='flex items-center justify-between p-4'>
-                <h1 className='font-bold'>周辺の人気なガイドブック</h1>        
+                <h1 className='font-bold'>{getDisplayTitle()}</h1>        
                 {selectedGuidebookId !== null && (
                   <button 
                     onClick={handleShowAll}
