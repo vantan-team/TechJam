@@ -5,6 +5,7 @@ import { initData } from "@/lib/seeds";
 import { Button } from "./ui/button";
 import { deleteFriend } from "@/requests/user";
 import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type User = {
   id: number;
@@ -23,6 +24,7 @@ type Props = {
 };
 
 export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
+  const router = useRouter();
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   //   const [users, setUsers] = useState<User[]>([]);
   //   useEffect(() => {
@@ -76,6 +78,12 @@ export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
     }
   };
 
+  const handleUserClick = (user: User) => {
+    if (user.id) {
+      router.push(`/user/${user.id}`);
+    }
+  };
+
   return (
     <div className="p-4">
       <ul className="space-y-3 max-h-[450px] overflow-y-auto">
@@ -84,6 +92,7 @@ export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
             <li
               className="flex items-center p-4 bg-white/60 hover:bg-white/90 rounded-lg border border-gray-200/50 shadow-sm transition-all duration-200 transform hover:scale-[1.01] hover:shadow-md cursor-pointer"
               key={user.id || user.name}
+              onClick={() => handleUserClick(user)}
             >
               <div className="flex-shrink-0 mr-4">
                 {user.profile_photo_url ? (
@@ -123,7 +132,10 @@ export const UserAvater = ({ slug, friends, onFriendDeleted }: Props) => {
                       size="sm"
                       variant="outline"
                       disabled={deletingIds.has(user.id)}
-                      onClick={() => handleDeleteFriend(user)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFriend(user);
+                      }}
                       className="border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 transform hover:scale-[1.02]"
                     >
                       {deletingIds.has(user.id) ? (
