@@ -327,18 +327,21 @@ export default function AddToGuidePage() {
         }
         if (!shopId) throw new Error('店舗情報の取得に失敗しました');
 
+        const formData = new FormData();
+        formData.append('shop_id', shopId.toString());
+        formData.append('star', rating.toString());
+        formData.append('comment', memo);
+        if (selectedPhoto) {
+          formData.append('image', selectedPhoto);
+        }
+
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/guidebooks/${selectedGuidebook!.id}/contents`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
             'Accept': 'application/json'
           },
-          body: JSON.stringify({
-            shop_id: shopId,
-            star: rating,
-            comment: memo
-          })
+          body: formData
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -348,7 +351,7 @@ export default function AddToGuidePage() {
 
       await new Promise(resolve => setTimeout(resolve, 300));
       // 追加完了後は対象ガイドブック詳細へ遷移する方が自然
-      router.push(`/guidebooks/${selectedGuidebook!.id}`);
+      router.push(`/guidebook/${selectedGuidebook!.id}`);
     } catch (error) {
       console.error('Failed to add restaurant:', error);
       const message = error instanceof Error ? error.message : 'レストランの追加に失敗しました';

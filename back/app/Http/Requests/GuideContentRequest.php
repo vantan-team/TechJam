@@ -19,7 +19,8 @@ class GuideContentRequest extends FormRequest
         return [
             'shop_id' => $isUpdate ? 'sometimes|integer' : 'required|integer',
             'star' => 'required|integer|min:1|max:3',
-            'comment' => 'nullable|string|max:500'
+            'comment' => 'nullable|string|max:500',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ];
     }
 
