@@ -320,7 +320,7 @@ class RestaurantController extends Controller
     /**
      * ホットペッパーAPIから店舗情報を取得してDBに保存またはDBから取得
      */
-    private function getOrCreateShopFromHotpepper(string $hotpepperId): ?array
+    public function getOrCreateShopFromHotpepper(string $hotpepperId): ?array
     {
         // まずDBから検索（キャッシュチェック）
         $shop = Shop::where('hotpepper_id', $hotpepperId)->first();

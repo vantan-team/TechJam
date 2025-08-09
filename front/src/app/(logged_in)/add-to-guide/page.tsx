@@ -5,29 +5,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Search, Plus, Star, MapPin, Camera, BookOpen, Clock, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { searchRestaurants } from '@/requests/restaurant';
 
-// Types
-interface Restaurant {
-  id: string;
-  name: string;
-  address: string;
-  category: string;
-  source: 'hotpepper' | 'history' | 'manual';
-  photo_url?: string;
-  budget?: string;
-  hotpepper_id?: string;
-  lat?: number | null;
-  lng?: number | null;
-}
-
-interface Guidebook {
-  id: number;
-  title: string;
-  description: string;
-  restaurant_count: number;
-  image_url?: string;
-  created_at?: string;
-}
+import type { Restaurant } from '@/types/restaurant';
+import type { Guidebook } from '@/types/guidebook';
 
 export default function AddToGuidePage() {
   // URL params and navigation
@@ -135,8 +116,10 @@ export default function AddToGuidePage() {
   // Auto-search restaurants when query changes
   useEffect(() => {
     if (searchQuery.length > 1) {
-      const timeoutId = setTimeout(() => {
-        searchRestaurants(searchQuery, { reset: true });
+      const timeoutId = setTimeout(async () => {
+        const data = await searchRestaurants(searchQuery);
+        setSearchResults(data.shops);
+        setHpMeta(data.pagination?.hotpepper ?? null);
       }, 400);
       return () => clearTimeout(timeoutId);
     } else {
@@ -146,86 +129,6 @@ export default function AddToGuidePage() {
   }, [searchQuery]);
 
   const loadGuidebooks = async () => {
-    try {
-      // 1) 認証ユーザー取得
-      const statusRes = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/auth/status`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (!statusRes.ok) throw new Error('認証状態の取得に失敗しました');
-      const statusData = await statusRes.json();
-      const userId = statusData?.user?.id;
-      if (!userId) throw new Error('ユーザー情報が取得できませんでした');
-
-      // 2) 統合APIからユーザーのガイドブック一覧を取得
-      const gbRes = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/user/${userId}/guide_books`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      });
-      if (!gbRes.ok) throw new Error('ガイドブック取得に失敗しました');
-      const gbData = await gbRes.json();
-      const books = (gbData?.books ?? []).map((b: any) => ({
-        id: Number(b.id ?? 0),
-        title: b.title,
-        description: '',
-        restaurant_count: b.restaurant_count ?? b.contents_count ?? 0,
-        image_url: b.image_url ?? b.cover_image ?? undefined,
-      }));
-      setGuidebooks(books);
-    } catch (error) {
-      console.error('Failed to load guidebooks:', error);
-      setError('ガイドブックの読み込みに失敗しました');
-    }
-  };
-
-  const searchRestaurants = async (query: string, opts?: { reset?: boolean }) => {
-    setIsSearching(true);
-    const token = `${Date.now()}-${Math.random()}`;
-    lastTokenRef.current = token;
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_ROOT}/api/restaurants/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          keyword: query,
-          include_history: true,
-          start: opts?.reset ? 1 : (hpMeta?.next_start ?? 1),
-          count: 20
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Search API Response:', data); // デバッグログ
-        const shops: Restaurant[] = data.data?.shops || [];
-        const meta = data.data?.pagination?.hotpepper;
-        console.log('Parsed shops:', shops); // デバッグログ
-        console.log('Pagination meta:', meta); // デバッグログ
-        if (lastTokenRef.current !== token) return; // 古いレスポンスは無視
-        setHpMeta(meta ?? null);
-        setSearchResults((prev) => (opts?.reset ? shops : [...prev, ...shops]));
-      } else {
-        const errorData = await response.json();
-        console.error('Search API Error:', response.status, errorData);
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   const createGuidebook = async () => {
     if (!newGuidebookTitle.trim()) return;

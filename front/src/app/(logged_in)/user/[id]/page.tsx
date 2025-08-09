@@ -6,10 +6,11 @@ import { useAtom } from 'jotai';
 import { userAtom } from '@/atoms/user';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Edit, Users, Star, MapPin, Calendar, Clock, UserCheck } from 'lucide-react';
+import { UserPlus, Edit, Users, Star, MapPin, Calendar, Clock, UserCheck, PlusCircle } from 'lucide-react';
 import type { UserProfile, VisitedHistory, GuideBook } from '@/types/user';
 import { getUserProfile, getVisitedHistory, getGuideBooks, followUser, getUserFollowStatus, getFriendStatus, sendFriendRequest } from '@/requests/user';
 import EditProfileModal from '@/components/EditProfileModal';
+import AddHistoryModal from '@/components/AddHistoryModal';
 import Link from 'next/link';
 
 
@@ -27,6 +28,7 @@ export default function UserPage() {
   const [guideBooks, setGuideBooks] = useState<GuideBook[]>([]);
   const userId = params.id as string;
   const isOwnProfile = currentUser?.id?.toString() === userId;
+  const [isAddHistoryModalOpen, setAddHistoryModalOpen] = useState(false);
 
   // 月ごとにグループ化（来店履歴）
   const groupVisitedByMonth = (history: VisitedHistory[]) => {
@@ -384,7 +386,11 @@ export default function UserPage() {
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">来店履歴</h2>
-                <Calendar size={20} className="text-gray-400" />
+                {isOwnProfile && (
+                  <Button variant="ghost" size="icon" onClick={() => setAddHistoryModalOpen(true)}>
+                    <PlusCircle className="text-gray-500" />
+                  </Button>
+                )}
               </div>
               
               {userProfile.isPrivate && !isOwnProfile ? (
@@ -482,6 +488,14 @@ export default function UserPage() {
         initialName={userProfile.name}
         initialBio={userProfile.bio || ''}
         initialProfilePhotoUrl={userProfile.profilePhotoUrl || ''}
+      />
+      <AddHistoryModal
+        isOpen={isAddHistoryModalOpen}
+        onClose={() => setAddHistoryModalOpen(false)}
+        onHistoryAdded={() => {
+          setAddHistoryModalOpen(false);
+          getVisitedHistory(userId).then(setVisitedHistory);
+        }}
       />
     </>
   );
